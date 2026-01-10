@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NEWSLY</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+
+  <style>
+    /* Reset and base */
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f8f7ff;
+      color: #1a1a1a;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    /* Colors */
+    :root {
+      --primary-violet: #570a8c;
+      --secondary-blue: #857beb;
+      --accent-yellow: #f0d0a7;
+      --bg-white: #ffffff;
+      --bg-light: #f8f7ff;
+      --shadow-soft: rgba(80, 49, 128, 0.15);
+      --text-dark: #1a1a1a;
+      --text-light: #ffffff;
+    }
+
+   
+    /* Main Content */
+    .main-content {
+      flex: 1;
+      background-color: var(--bg-light);
+      padding: 1.5rem 2rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Bar */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      height: 56px;
+      flex-shrink: 0;
+    }
+    .search-box {
+      position: relative;
+      max-width: 400px;
+      flex-grow: 1;
+    }
+    .search-box input[type="search"] {
+      width: 100%;
+      padding: 10px 12px 10px 40px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 0.9rem;
+      transition: border-color 0.3s ease;
+      background-color: #fff;
+      box-shadow: 0 0 5px rgba(133, 123, 235, 0.3);
+      outline-offset: 2px;
+      outline-color: transparent;
+    }
+    .search-box input[type="search"]:focus {
+      border-color: var(--primary-violet);
+      box-shadow: 0 0 10px var(--primary-violet);
+      outline-color: var(--primary-violet);
+    }
+    .search-box svg {
+      position: absolute;
+      top: 50%;
+      left: 12px;
+      transform: translateY(-50%);
+      fill: #857beb;
+      width: 18px;
+      height: 18px;
+    }
+    .topbar-actions {
+      display: flex;
+      gap: 1rem;
+      margin-left: 1.5rem;
+      align-items: center;
+      font-size: 1.25rem;
+    }
+    .icon-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 50%;
+      transition: background-color 0.2s ease, box-shadow 0.3s ease;
+      color: var(--primary-violet);
+      font-size: 1.4rem;
+    }
+    .icon-btn:hover {
+      background-color: var(--accent-yellow);
+      color: var(--primary-violet);
+      box-shadow: 0 0 10px var(--accent-yellow);
+    }
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: url('https://i.pravatar.cc/36') center/cover no-repeat;
+      border: 2px solid var(--primary-violet);
+      cursor: pointer;
+    }
+
+    /* Dashboard Grid */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+      flex-grow: 1;
+      overflow-y: auto;
+    }
+
+    /* Summary Cards */
+    .summary-cards {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 1.5rem;
+    }
+    .summary-card {
+      display: flex;
+      align-items: center;
+      padding: 1.25rem 1.5rem;
+      margin-right: 20px;
+      background-color: var(--bg-white);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px var(--shadow-soft);
+      cursor: default;
+      transition: box-shadow 0.3s ease;
+    }
+    .summary-card:hover {
+      box-shadow: 0 0 14px var(--primary-violet);
+    }
+    .summary-icon {
+      font-size: 2rem;
+      background-color: var(--secondary-blue);
+      color: var(--bg-white);
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-right: 1rem;
+      flex-shrink: 0;
+      box-shadow: 0 0 8px var(--secondary-blue);
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    .summary-card:hover .summary-icon {
+      background-color: var(--primary-violet);
+      box-shadow: 0 0 14px var(--primary-violet);
+    }
+    .summary-text {
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+    .summary-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: #555;
+      margin-bottom: 0.35rem;
+    }
+    .summary-value {
+      font-weight: 700;
+      font-size: 1.6rem;
+      color: var(--primary-violet);
+      font-variant-numeric: tabular-nums;
+      animation: fadein 1.2s ease-out forwards;
+    }
+    @keyframes fadein {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Charts Container */
+    .charts-container {
+      grid-column: 1 / -1;
+      display: grid;
+      margin-right: 20px;
+      min-height: 300px;
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 2rem !important;
+    }
+    .chart-card {
+      background-color: var(--bg-white);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px var(--shadow-soft);
+      padding: 1.5rem 1.75rem;
+      display: flex;
+      flex-direction: column;
+      min-height: 360px;
+    }
+    .chart-title {
+      font-weight: 600;
+      font-size: 1.2rem;
+      color: var(--primary-violet);
+      margin-bottom: 1rem;
+      user-select: none;
+    }
+    canvas {
+      flex-grow: 1;
+      max-height: 260px;
+      user-select: none;
+    }
+
+    /* Analytics & Insights */
+    .insights-feed {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+    .ai-insights, .activity-feed {
+      background-color: var(--bg-white);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px var(--shadow-soft);
+      padding: 1.5rem 1.75rem;
+      display: flex;
+      flex-direction: column;
+      margin-right: 20px;
+    }
+    .ai-insights {
+      color: var(--primary-violet);
+      user-select: none;
+    }
+    .ai-insights .highlight {
+      color: var(--accent-yellow);
+      font-weight: 700;
+    }
+    .insights-title {
+      font-weight: 600;
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+    }
+    .insights-item {
+      margin-bottom: 0.8rem;
+      font-size: 1rem;
+    }
+    .activity-feed {
+      max-height: 280px;
+      overflow-y: auto;
+      user-select: none;
+    }
+    .activity-item {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 1rem;
+      color: #444;
+      margin-bottom: 1rem;
+    }
+    .activity-icon {
+      font-size: 1.3rem;
+      color: var(--secondary-blue);
+      user-select: none;
+    }
+
+    /* Map Widget */
+    .map-widget {
+      grid-column: 1 / -1;
+      background-color: var(--bg-white);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px var(--shadow-soft);
+      padding: 0px 20px 20px 20px;
+      user-select: none;
+      position: relative;
+      height: 250px;
+      margin-right: 20px;
+      margin-bottom: 20px;
+    }
+    .map-title {
+      font-weight: 600;
+      color: var(--primary-violet);
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+      user-select: none;
+    }
+    .map-placeholder {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/World_map_blank_without_borders.svg/1200px-World_map_blank_without_borders.svg.png') no-repeat center/contain;
+      border-radius: 10px;
+    }
+    .pin {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background-color: var(--accent-yellow);
+      box-shadow: 0 0 12px var(--accent-yellow);
+      border: 2px solid var(--bg-white);
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.3s ease;
+    }
+    .pin:focus-visible,
+    .pin:hover {
+      outline: none;
+      transform: scale(1.5);
+      box-shadow: 0 0 20px var(--accent-yellow);
+      z-index: 10;
+    }
+    .pin-tooltip {
+      position: absolute;
+      bottom: 130%;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--primary-violet);
+      color: var(--text-light);
+      padding: 5px 8px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      user-select: none;
+      transition: opacity 0.3s ease;
+      z-index: 15;
+    }
+    .pin:focus-visible + .pin-tooltip,
+    .pin:hover + .pin-tooltip {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .pin.india {
+      top: 63%;
+      left: 50%;
+    }
+    .pin.us {
+      top: 40%;
+      left: 23%;
+    }
+    .pin.uk {
+      top: 28%;
+      left: 42%;
+    }
+
+    /* Responsive */
+    @media (max-width: 1080px) {
+      .charts-container {
+        grid-template-columns: 1fr;
+      }
+      .insights-feed {
+        grid-template-columns: 1fr;
+      }
+      .sidebar {
+        width: 200px;
+      }
+    }
+    /* Fix spacing between sections */
+.dashboard-grid > * {
+  margin-bottom: 2rem; /* space between every major block */
+}
+
+/* Ensure insights + activity section starts cleanly below charts */
+.insights-feed {
+  margin-top: 1.5rem !important;
+}
+
+/* Give breathing room from right scrollbar */
+.main-content {
+  padding-right: 40px !important; 
+}
+/* On mobile, stack them vertically */
+@media (max-width: 1080px) {
+  .charts-container {
+    grid-template-columns: 1fr !important;
+  }
+}
+/* ------------------------------------
+   SOFT LAVENDER DARK MODE THEME
+------------------------------------ */
+:root[data-theme="dark"] {
+  --bg-light: #1f1b2e;       /* Soft deep violet-gray */
+  --bg-white: #2b2640;       /* Muted card background */
+  --text-dark: #fcfcfc;      /* Soft off-white */
+  --shadow-soft: rgba(0,0,0,0.35);
+}
+
+/* Page + general text */
+:root[data-theme="dark"] body {
+  background: var(--bg-light);
+  color: var(--text-dark);
+}
+
+/* Cards & Panels */
+:root[data-theme="dark"] .summary-card,
+:root[data-theme="dark"] .chart-card,
+:root[data-theme="dark"] .ai-insights,
+:root[data-theme="dark"] .activity-feed,
+:root[data-theme="dark"] .map-widget {
+  background-color: var(--bg-white);
+  box-shadow: 0 0 14px rgba(87, 10, 140, 0.35);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* Section Titles */
+:root[data-theme="dark"] .chart-title,
+:root[data-theme="dark"] .insights-title,
+:root[data-theme="dark"] .map-title {
+  color: #f0d0a7; /* warm yellow accent */
+}
+
+/* Search box */
+:root[data-theme="dark"] .search-box input[type="search"] {
+  background: #363052;
+  color: #dcd4f4;
+  border-color: #554e76;
+}
+
+/* Icons & Highlight Colors */
+:root[data-theme="dark"] .summary-card:hover .summary-icon {
+  background-color: #f0d0a7;
+  color: #c6bbf3;
+}
+
+/* Smooth transition */
+body, .summary-card, .chart-card, .ai-insights, .activity-feed, .map-widget, .search-box input {
+  transition: background 0.35s ease, color 0.35s ease, box-shadow 0.35s ease;
+}
+
+
+  </style>
+</head>
+<body>
+
+  <div class="dashboard" role="application" aria-label="NEWSLY">
+    {% include 'sidebar.html' %}
+
+
+    <main class="main-content" role="main" aria-label="Main dashboard content">
+
+      <header class="topbar">
+        <div class="search-box">
+          <input type="search" aria-label="Search summaries or articles" placeholder="Search summaries or articles…" />
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="position:absolute; top:50%; left:12px; transform:translateY(-50%); width:18px; height:18px; fill:#857beb;">
+            <path d="M10 2a8 8 0 105.293 14.293l4.707 4.707 1.414-1.414-4.707-4.707A8 8 0 0010 2zm0 2a6 6 0 110 12 6 6 0 010-12z"/>
+          </svg>
+        </div>
+
+        <div class="topbar-actions">
+          <button class="icon-btn" aria-label="Notifications" title="Notifications">🔔</button>
+          <button class="icon-btn" aria-label="Toggle Light/Dark Mode" title="Toggle Light/Dark Mode">🌓</button>
+          <div class="avatar" role="img" aria-label="User Profile"></div>
+        </div>
+      </header>
+
+      <section class="dashboard-grid" aria-live="polite">
+
+        <!-- Summary Cards -->
+        <section class="summary-cards" aria-label="Summary statistics cards">
+          <article class="summary-card" aria-labelledby="total-articles-title">
+            <div class="summary-icon" aria-hidden="true">📝</div>
+            <div>
+              <h3 id="total-articles-title" class="summary-title">Total Articles Summarized</h3>
+              <p class="summary-value" data-count="1245">0</p>
+            </div>
+          </article>
+          <article class="summary-card" aria-labelledby="active-users-title">
+            <div class="summary-icon" aria-hidden="true">👤</div>
+            <div>
+              <h3 id="active-users-title" class="summary-title">Active Users Today</h3>
+              <p class="summary-value" data-count="532">0</p>
+            </div>
+          </article>
+          <article class="summary-card" aria-labelledby="avg-summary-length-title">
+            <div class="summary-icon" aria-hidden="true">✍️</div>
+            <div>
+              <h3 id="avg-summary-length-title" class="summary-title">Avg. Summary Length</h3>
+              <p class="summary-value" data-count="118">0</p>
+            </div>
+          </article>
+          <article class="summary-card" aria-labelledby="ai-accuracy-rate-title">
+            <div class="summary-icon" aria-hidden="true">✔️</div>
+            <div style="display:flex; align-items:center; gap: 4px;">
+              <h3 id="ai-accuracy-rate-title" class="summary-title">AI Accuracy Rate</h3>
+              <p class="summary-value" data-count="94">0</p><span style="font-weight:700; color: var(--primary-violet); font-size:1.2rem;">%</span>
+            </div>
+          </article>
+        </section>
+
+        <!-- Charts -->
+        <section class="charts-container" aria-label="Data visualizations">
+          <article class="chart-card" aria-labelledby="line-chart-label">
+            <h2 id="line-chart-label" class="chart-title">Summaries Generated (Last 7 Days)</h2>
+            <canvas id="lineChart" role="img" aria-describedby="line-chart-desc"></canvas>
+            <p id="line-chart-desc" class="visually-hidden">Line chart showing daily summaries generated over the last 7 days with a steady upward trend.</p>
+          </article>
+          <article class="chart-card" aria-labelledby="pie-chart-label">
+            <h2 id="pie-chart-label" class="chart-title">News Categories Summarized</h2>
+            <canvas id="pieChart" role="img" aria-describedby="pie-chart-desc"></canvas>
+            <p id="pie-chart-desc" class="visually-hidden">Pie chart representing the percentage distribution of news categories summarized: Politics 25%, Sports 20%, Tech 18%, Entertainment 22%, Health 15%.</p>
+          </article>
+        </section>
+
+        <!-- Analytics & Activity -->
+        <section class="insights-feed" aria-label="Analytics and recent activities">
+
+          <article class="ai-insights" aria-labelledby="ai-insights-label">
+            <h2 id="ai-insights-label" class="insights-title">AI Insights</h2>
+            <p><strong>Most Summarized Source:</strong> <span class="highlight">BBC News</span></p>
+            <p><strong>Peak Time:</strong> <span class="highlight">7 PM IST</span></p>
+            <p><strong>Sentiment:</strong> <span class="highlight">64% Neutral</span>, <span class="highlight">22% Positive</span>, <span class="highlight">14% Negative</span></p>
+          </article>
+
+          <article class="activity-feed" aria-labelledby="activity-feed-label">
+            <h2 id="activity-feed-label" class="insights-title">Activity Feed</h2>
+            <div class="activity-item"><span class="activity-icon" aria-hidden="true">📰</span> User Ananya summarized <em>‘Global Markets Update’</em> (2 mins ago)</div>
+            <div class="activity-item"><span class="activity-icon" aria-hidden="true">📰</span> New article added from TechCrunch (5 mins ago)</div>
+            <div class="activity-item"><span class="activity-icon" aria-hidden="true">⚙️</span> Server backup completed (10 mins ago)</div>
+          </article>
+
+        </section>
+
+        <!-- Map Widget -->
+        <section class="map-widget" aria-label="Map showing active summarizer users">
+          <h2 class="map-title">Active Users by Country</h2>
+          <div class="map-placeholder" aria-hidden="true">
+            <div class="pin india" tabindex="0" aria-describedby="tip-india" role="button"></div>
+            <div id="tip-india" class="pin-tooltip" role="tooltip">India — 248 active users</div>
+
+            <div class="pin us" tabindex="0" aria-describedby="tip-us" role="button"></div>
+            <div id="tip-us" class="pin-tooltip" role="tooltip">US — active users</div>
+
+            <div class="pin uk" tabindex="0" aria-describedby="tip-uk" role="button"></div>
+            <div id="tip-uk" class="pin-tooltip" role="tooltip">UK — active users</div>
+          </div>
+        </section>
+
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    // Animate summary counts
+    document.querySelectorAll('.summary-value').forEach(el => {
+      const target = Number(el.getAttribute('data-count'));
+      let count = 0;
+      const step = Math.ceil(target / 100);
+      const interval = setInterval(() => {
+        count += step;
+        if (count >= target) {
+          el.textContent = target;
+          clearInterval(interval);
+        } else {
+          el.textContent = count;
+        }
+      }, 12);
+    });
+
+    // Line Chart - Summaries Generated
+    const lineCtx = document.getElementById('lineChart').getContext('2d');
+    new Chart(lineCtx, {
+      type: 'line',
+      data: {
+        labels: ['7d ago', '6d ago', '5d ago', '4d ago', '3d ago', '2d ago', 'Yesterday'],
+        datasets: [{
+          label: 'Summaries Generated',
+          data: [1050, 1120, 1158, 1195, 1210, 1232, 1245],
+          borderColor: '#570a8c',
+          backgroundColor: 'rgba(87, 10, 140, 0.15)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 5,
+          pointBackgroundColor: '#857beb',
+          borderWidth: 3,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: false,
+            ticks: {
+              color: '#570a8c',
+              font: {weight: '600'},
+            },
+            grid: {
+              color: '#eae9f8',
+            }
+          },
+          x: {
+            ticks: {
+              color: '#570a8c',
+              font: {weight: '600'}
+            },
+            grid: {
+              display: false,
+            }
+          }
+        },
+        plugins: {
+          legend: {display: false},
+          tooltip: {
+            backgroundColor: '#570a8c',
+            titleFont: {weight: '700'},
+            bodyFont: {weight: '600'},
+          }
+        }
+      }
+    });
+
+    // Pie Chart - News Categories
+    const pieCtx = document.getElementById('pieChart').getContext('2d');
+    new Chart(pieCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Politics', 'Sports', 'Tech', 'Entertainment', 'Health'],
+        datasets: [{
+          data: [25, 20, 18, 22, 15],
+          backgroundColor: [
+            '#570a8c', // violet
+            '#857beb', // blue
+            '#f0d0a7', // yellow accent
+            '#b6a0e0', // lighter violet
+            '#d4c4f7', // even lighter violet
+          ],
+          borderColor: '#ffffff',
+          borderWidth: 2,
+          hoverOffset: 20,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '60%',
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: {
+              color: '#570a8c',
+              font: {weight: '600', size: 14},
+              padding: 15,
+            }
+          },
+          tooltip: {
+            backgroundColor: '#570a8c',
+            bodyFont: {weight: '600'},
+          }
+        }
+      }
+    });
+   // DARK MODE TOGGLE
+const themeToggleBtn = document.querySelector('.icon-btn[aria-label="Toggle Light/Dark Mode"]');
+
+function setTheme(mode) {
+  if (mode === "dark") {
+    document.documentElement.setAttribute("data-theme", "dark");
+    themeToggleBtn.textContent = "🌞";
+  } else {
+    document.documentElement.removeAttribute("data-theme");
+    themeToggleBtn.textContent = "🌓";
+  }
+}
+
+// ALWAYS start in Light Mode on page load
+setTheme("light");
+localStorage.setItem("theme", "light");
+
+// Toggle theme on click (but do NOT save state for next reload)
+themeToggleBtn.addEventListener("click", () => {
+  const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+  setTheme(isDark ? "light" : "dark");
+});
+
+
+  </script>
+
+  <style>
+    /* Accessibility helper - hide visually but keep for screen readers */
+    .visually-hidden {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      padding: 0 !important;
+      margin: -1px !important;
+      overflow: hidden !important;
+      clip: rect(0,0,0,0) !important;
+      white-space: nowrap !important;
+      border: 0 !important;
+    }
+  </style>
+
+</body>
+</html>

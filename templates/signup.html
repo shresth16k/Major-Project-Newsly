@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sign Up Page</title>
+<!-- Fonts + Global CSS -->
+<link rel="stylesheet" href="{{ url_for('static', filename='global.css') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f5f7fa;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  .signup-container {
+    margin: auto;
+    margin-top: 40px;
+    background-color: #f9fafb;
+    border-radius: 32px;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+    padding: 48px 40px 56px;
+    width: 90%;
+    max-width: 500px;
+    box-sizing: border-box;
+    text-align: center;
+  }
+
+  h1 {
+    font-weight: 700;
+    font-size: 28px;
+    margin: 0 0 28px 0;
+    color: #5a2dbb;
+  }
+
+  .input-group {
+    margin-bottom: 20px;
+  }
+
+  .input-group input {
+      width: 80%;
+      padding: 12px 14px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      color: #555;
+      font-family: var(--font-inter);
+      transition: border-color 0.3s ease;
+    }
+
+    .input-group input:focus {
+      color: #555;
+    }
+
+  .signup-button {
+    width: 100%;
+    background: linear-gradient(90deg, #5a2dbb 0%, #451a8b 100%);
+    border: none;
+    border-radius: 20px;
+    color: white;
+    padding: 16px 0;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 10px;
+    margin-bottom: 24px;
+    transition: background 0.3s ease;
+  }
+
+  .signup-button:hover {
+    background: linear-gradient(90deg, #451a8b 0%, #34146a 100%);
+  }
+
+  .login-text {
+    font-size: 14px;
+    color: #666;
+  }
+
+  .login-text a {
+    color: #5a2dbb;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    margin-left: 6px;
+    transition: color 0.3s ease;
+  }
+
+  .login-text a:hover {
+    color: #3e1e81;
+    text-decoration: underline;
+  }
+
+  .flash-messages {
+    margin-bottom: 15px;
+  }
+
+  .flash-text {
+    color: #d9534f;
+    font-size: 14px;
+    margin: 4px 0;
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+  <header class="site-header" style="position:sticky; top:0; z-index:1000; background:white; box-shadow:0 2px 6px rgba(0,0,0,0.08);">
+    <div class="container header-container page-specific-header" style="display:flex; align-items:center; justify-content:flex-start; gap:20px; padding:12px 0;">
+      <a href="{{ url_for('home') }}">
+        <img src="{{ url_for('static', filename='images/1a8bbdb852d2ffc01641f45f7667681d4df54d20.png') }}" alt="Newsly Logo" class="logo" style="height:90px;">
+      </a>
+      <nav class="main-nav">
+        <ul style="list-style:none; display:flex; gap:25px; margin:0; padding:0; align-items:center;">
+          <li><a href="{{ url_for('home') }}" class="nav-link">Home</a></li>
+          <li><a href="{{ url_for('about') }}" class="nav-link">About us</a></li>
+          <li class="dropdown">
+            <a href="#categories" class="dropbtn">Categories</a>
+            <div class="dropdown-content">
+              <a href="#politics">Politics</a>
+              <a href="#sports">Sports</a>
+              <a href="#technology">Technology</a>
+              <a href="#health">Health</a>
+              <a href="#business">Business</a>
+              <a href="#finance">Finance</a>
+              <a href="#entertainment">Entertainment</a>
+            </div>
+          </li>
+          <li><a href="{{ url_for('privacy') }}" class="nav-link">Privacy Policy</a></li>
+          <li><a href="{{ url_for('terms') }}" class="nav-link">Terms of use</a></li>
+          <li><a href="{{ url_for('contact') }}" class="nav-link">Contact us</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+<div class="signup-container">
+
+  <h1>Create Your Account</h1>
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="flash-messages">
+        {% for message in messages %}
+          <p class="flash-text">{{ message }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- Sign Up Form -->
+  <form method="POST" action="{{ url_for('signup') }}">
+    <div class="input-group">
+      <input type="text" name="fullname" placeholder="Full Name" required />
+    </div>
+    <div class="input-group">
+      <input type="email" name="email" placeholder="Email" required />
+    </div>
+    <div class="input-group">
+      <input type="password" name="password" placeholder="Password" required />
+    </div>
+    <button type="submit" class="signup-button">Sign Up</button>
+  </form>
+
+  <div class="login-text">
+    Already have an account?
+    <a href="{{ url_for('login_page') }}">Login</a>
+  </div>
+</div>
+<footer id="section-footer" class="site-footer" style="background-color: #570a8c; color: white; text-align: center;">
+  <div class="container footer-container">
+    <div class="footer-top">
+      <div class="footer-about">
+        <a href="{{ url_for('home') }}">
+          <img src="{{ url_for('static', filename='images/1a8bbdb852d2ffc01641f45f7667681d4df54d20.png') }}" alt="Newsly Logo" class="footer-logo">
+        </a>
+        <p>AI that turns headlines into insights — faster than ever before!</p>
+      </div>
+      <div class="footer-links-group">
+        <div id="contact" class="footer-links">
+          <h4>CONTACT US</h4>
+          <a href="mailto:support@neswly.com">support@neswly.com</a>
+        </div>
+        <div id="quick-links" class="footer-links">
+          <h4>QUICK LINKS</h4>
+          <ul>
+            <li><a href="{{ url_for('privacy') }}">Privacy Policy</a></li>
+            <li><a href="{{ url_for('terms') }}">Terms & Conditions</a></li>
+            <li><a href="{{ url_for('contact') }}">Contact Us</a></li>
+            <li><a href="{{ url_for('about') }}">About Us</a></li>
+            <li><a href="{{ url_for('faq') }}">FAQs</a></li>
+          </ul>
+        </div>
+        <div id="social-media" class="footer-links">
+          <h4>FOLLOW US</h4>
+          <div class="social-icons">
+            <a href="https://facebook.com/yourpage" target="_blank" rel="noopener" aria-label="Facebook">
+              <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M22.675 0h-21.35C.593 0 0 .593 0 1.325v21.351C0 23.406.593 24 1.325 24h11.495v-9.294H9.691v-3.622h3.129V8.412c0-3.1 1.893-4.788 4.658-4.788 1.325 0 2.466.099 2.797.143v3.24l-1.918.001c-1.505 0-1.797.716-1.797 1.766v2.317h3.59l-.467 3.622h-3.123V24h6.116C23.406 24 24 23.407 24 22.676V1.325C24 .593 23.406 0 22.675 0z"/></svg>
+            </a>
+            <a href="https://twitter.com/yourprofile" target="_blank" rel="noopener" aria-label="Twitter">
+              <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M24 4.557a9.835 9.835 0 01-2.828.775 4.936 4.936 0 002.165-2.724c-.95.564-2.005.974-3.127 1.195a4.92 4.92 0 00-8.386 4.482c-4.083-.195-7.702-2.159-10.126-5.134a4.822 4.822 0 00-.666 2.475 4.918 4.918 0 002.188 4.096 4.9 4.9 0 01-2.228-.616c-.054 2.281 1.581 4.415 3.95 4.89a4.935 4.935 0 01-2.224.086 4.926 4.926 0 004.6 3.42 9.868 9.868 0 01-6.1 2.104c-.397 0-.788-.023-1.17-.069a13.945 13.945 0 007.557 2.21c9.054 0 14-7.505 14-14.004 0-.213-.005-.425-.014-.636A10.012 10.012 0 0024 4.557z"/></svg>
+            </a>
+            <a href="https://linkedin.com/in/yourprofile" target="_blank" rel="noopener" aria-label="LinkedIn">
+              <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.98 3.5C3.36 3.5 2 4.862 2 6.483s1.36 2.983 2.98 2.983 2.98-1.36 2.98-2.983S6.6 3.5 4.98 3.5zM2.389 8.47h5.173v13.092H2.39V8.47zM10.67 8.397c-1.638 0-2.764 1.14-3.222 2.176h-.047v-1.852H4.98v13.092h4.597v-7.158c0-.383.028-.766.141-1.038.308-.766 1.007-1.56 2.183-1.56 1.541 0 2.158 1.177 2.158 2.9v7.756h4.597v-8.312c0-4.449-2.373-6.52-5.541-6.52z"/></svg>
+            </a>
+            <a href="https://instagram.com/yourprofile" target="_blank" rel="noopener" aria-label="Instagram">
+              <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7.75 2h8.5A5.753 5.753 0 0122 7.75v8.5A5.753 5.753 0 0116.25 22h-8.5A5.753 5.753 0 012 16.25v-8.5A5.753 5.753 0 017.75 2zm4.25 5.5c-2.481 0-4.5 2.019-4.5 4.5s2.019 4.5 4.5 4.5 4.5-2.019 4.5-4.5-2.019-4.5-4.5-4.5zm6.5-.75a1.25 1.25 0 11-2.5 0 1.25 1.25 0 012.5 0zM12 9.75a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5z"/></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2025 Newsly Solutions Pvt. Ltd. All Rights Reserved.</p>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

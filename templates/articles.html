@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Articles Overview - NEWSLY</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+
+
+  <style>
+    /* RESET */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f8f7ff;
+      color: #1a1a1a;
+    }
+
+    :root {
+      --primary-violet: #570a8c;
+      --secondary-blue: #857beb;
+      --accent-yellow: #f0d0a7;
+      --bg-white: #ffffff;
+      --bg-light: #f8f7ff;
+      --shadow-soft: rgba(80, 49, 128, 0.15);
+    }
+
+    /* LAYOUT → MAIN CONTENT SCROLLS */
+    .dashboard {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .main-content {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding: 1.5rem 2.5rem;
+      background-color: var(--bg-light);
+    }
+
+    /* --- ALL STYLES BELOW ARE SAME AS YOUR ORIGINAL --- */
+
+    .header-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.75rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .page-title {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--primary-violet);
+    }
+    .search-bar { position: relative; max-width: 320px; width: 100%; }
+    .search-bar input {
+      width: 100%; padding: 10px 14px 10px 40px; border-radius: 8px;
+      border: 1.5px solid #ccc; font-size: 1rem; outline: none;
+    }
+    .search-bar svg {
+      position: absolute; top: 50%; left: 13px; transform: translateY(-50%);
+      width: 18px; height: 18px; fill: #857beb;
+    }
+
+    .analytics-cards {
+       display: grid;
+        grid-template-columns: 
+        repeat(auto-fit,minmax(200px,1fr)); 
+        gap: 1.5rem; 
+        margin-bottom: 2rem; 
+      }
+    .analytics-card {
+       background: #fff;
+        border-radius: 14px;
+         box-shadow: 0 2px 14px var(--shadow-soft);
+          padding: 1.6rem; 
+        }
+    .card-title { font-size: 1.1rem; font-weight: 700; color: var(--primary-violet); margin-bottom: .6rem; }
+    .card-value { font-size: 2.1rem; font-weight: 900; color: var(--primary-violet); }
+
+    .charts-section { 
+      display: grid;
+       grid-template-columns: 1.8fr 1fr; 
+       gap: 2rem; 
+       margin-bottom: 2rem;
+       height: 320px; 
+       }
+    .chart-card { 
+      background: #fff; 
+      border-radius: 14px; 
+      box-shadow: 0 2px 14px var(--shadow-soft); 
+      padding: 1.8rem; 
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    
+    }
+    .chart-card canvas {
+      flex-grow: 1;
+      max-height: 230px;
+    }
+
+    .articles-table-section { background: #fff; border-radius: 14px; box-shadow: 0 2px 14px var(--shadow-soft); padding: 1.5rem; margin-top: 35px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px; border-bottom: 1px solid #e2e0f8; text-align: left; }
+    th { background: #f1efff; color: var(--primary-violet); font-weight: 700; }
+    tr:hover { background: #e6e2fa; cursor: pointer; }
+
+  </style>
+</head>
+
+<body>
+
+<div class="dashboard">
+
+  {% include 'sidebar.html' %}
+  
+
+  <main class="main-content">
+
+    <section class="header-section">
+      <h1 class="page-title">Articles Overview</h1>
+      <div class="search-bar">
+        <input type="text" placeholder="Search articles…">
+        <svg viewBox="0 0 24 24"><path d="M10 2a8 8 0 105.293 14.293l4.707 4.707 1.414-1.414-4.707-4.707A8 8 0 0010 2z"/></svg>
+      </div>
+    </section>
+
+    <section class="analytics-cards">
+      <article class="analytics-card"><h3 class="card-title">Total Articles Summarized</h3><p class="card-value" id="totalArticles">0</p></article>
+      <article class="analytics-card"><h3 class="card-title">Average Summary Length</h3><p class="card-value" id="avgLength">0 words</p></article>
+      <article class="analytics-card"><h3 class="card-title">Most Popular Category</h3><p class="card-value" id="popularCategory">-</p></article>
+      <article class="analytics-card"><h3 class="card-title">Article Growth (This Week vs Last Week)</h3><p class="card-value" id="articleGrowth">0%</p></article>
+    </section>
+
+    <section class="charts-section">
+      <article class="chart-card"><h2 class="chart-title">Articles by Category</h2><canvas id="barChart"></canvas></article>
+      <article class="chart-card"><h2 class="chart-title">Uploads Over Time</h2><canvas id="lineChart"></canvas></article>
+    </section>
+
+    <section class="articles-table-section">
+      <h2 class="table-title">Recent Articles</h2>
+      <table>
+        <thead><tr><th>Title</th><th>Category</th><th>Date</th><th>Views</th><th>Summary</th></tr></thead>
+        <tbody id="articlesTableBody"></tbody>
+      </table>
+    </section>
+
+  </main>
+</div>
+
+<!-- Chart JS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// ==== CHART DATA ====
+
+const articlesByCategory = {
+  labels: ['Politics', 'Sports', 'Tech', 'Entertainment', 'Health'],
+  counts: [320, 250, 220, 280, 175]
+};
+
+const articlesUploadedOverTime = {
+  labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+  data: [150, 175, 190, 230, 210, 180, 200]
+};
+
+// ==== BAR CHART (Articles by Category) ====
+const barCtx = document.getElementById('barChart').getContext('2d');
+new Chart(barCtx, {
+  type: 'bar',
+  data: {
+    labels: articlesByCategory.labels,
+    datasets: [{
+      label: 'Articles Summarized',
+      data: articlesByCategory.counts,
+      backgroundColor: [
+        '#570a8c', '#857beb', '#f0d0a7', '#b6a0e0', '#d4c4f7'
+      ],
+      borderRadius: 6,
+      maxBarThickness: 40
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { beginAtZero: true, grid: { color: '#e8e6f7' } },
+      x: { grid: { display: false } }
+    }
+  }
+});
+
+// ==== LINE CHART (Uploads Over Time) ====
+const lineCtx = document.getElementById('lineChart').getContext('2d');
+new Chart(lineCtx, {
+  type: 'line',
+  data: {
+    labels: articlesUploadedOverTime.labels,
+    datasets: [{
+      label: 'Articles Uploaded',
+      data: articlesUploadedOverTime.data,
+      borderColor: '#570a8c',
+      backgroundColor: 'rgba(87,10,140,0.15)',
+      fill: true,
+      tension: 0.3,
+      pointRadius: 5,
+      pointBackgroundColor: '#857beb',
+      borderWidth: 3
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { beginAtZero: true, grid: { color: '#e8e6f7' } },
+      x: { grid: { display: false } }
+    }
+  }
+});
+</script>
+<script>
+
+const summaryData = { totalArticles: 1245, avgSummaryLength: 118, popularCategory:"Politics", articleGrowthPercent: 8 };
+
+function animateCount(id, value, suffix='') {
+  const el = document.getElementById(id);
+  let count = 0, step = Math.max(1, Math.floor(value / 100));
+  const interval = setInterval(() => {
+    count += step;
+    if (count >= value) { el.textContent = value + suffix; clearInterval(interval); }
+    else { el.textContent = count + suffix; }
+  }, 10);
+}
+
+animateCount('totalArticles', summaryData.totalArticles);
+animateCount('avgLength', summaryData.avgSummaryLength, ' words');
+document.getElementById('popularCategory').textContent = summaryData.popularCategory;
+animateCount('articleGrowth', summaryData.articleGrowthPercent, '%');
+
+const recentArticles = [
+  { title:"Global Markets Update", category:"Politics", date:"2025-06-15", views:4523, summaryLength:120 },
+  { title:"Tech Trends 2025", category:"Tech", date:"2025-06-14", views:3982, summaryLength:135 }
+];
+
+const tableBody = document.getElementById('articlesTableBody');
+recentArticles.forEach(a => {
+  const row = `<tr><td>${a.title}</td><td>${a.category}</td><td>${a.date}</td><td>${a.views}</td><td>${a.summaryLength} words</td></tr>`;
+  tableBody.insertAdjacentHTML('beforeend', row);
+});
+
+</script>
+
+</body>
+</html>

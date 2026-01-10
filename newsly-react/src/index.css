@@ -1,0 +1,211 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary-50: #f5f3ff;
+  --color-primary-100: #ede9fe;
+  --color-primary-200: #ddd6fe;
+  --color-primary-300: #c4b5fd;
+  --color-primary-400: #a78bfa;
+  --color-primary-500: #570a8c;
+  --color-primary-600: #451a8b;
+  --color-primary-700: #34146a;
+  --color-primary-800: #2e1065;
+  --color-primary-900: #1e0a3e;
+  
+  --color-secondary-400: #857beb;
+  --color-secondary-500: #375aa9;
+  
+  --color-accent-300: #f0d0a7;
+  
+  --font-inter: 'Inter', sans-serif;
+  --font-hind: 'Hind', sans-serif;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  
+  body {
+    font-family: var(--font-inter);
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Dark mode base styles */
+  .dark body,
+  .dark {
+    background-color: #0f172a;
+    color: #e2e8f0;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .gradient-text {
+    background: linear-gradient(90deg, #570a8c 71.15%, #375aa9 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .dark .gradient-text {
+    background: linear-gradient(90deg, #a78bfa 71.15%, #60a5fa 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+/* Dark mode component overrides */
+.dark .bg-white {
+  background-color: #1e293b !important;
+}
+
+.dark .bg-gray-50 {
+  background-color: #0f172a !important;
+}
+
+.dark .bg-gray-100 {
+  background-color: #1e293b !important;
+}
+
+.dark .text-gray-900,
+.dark .text-gray-800 {
+  color: #f1f5f9 !important;
+}
+
+.dark .text-gray-700 {
+  color: #e2e8f0 !important;
+}
+
+.dark .text-gray-600 {
+  color: #cbd5e1 !important;
+}
+
+.dark .text-gray-500 {
+  color: #94a3b8 !important;
+}
+
+.dark .border-gray-100,
+.dark .border-gray-200 {
+  border-color: #334155 !important;
+}
+
+.dark .shadow-lg,
+.dark .shadow-xl,
+.dark .shadow-2xl {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2) !important;
+}
+
+.dark .hover\:bg-gray-50:hover {
+  background-color: #334155 !important;
+}
+
+.dark .hover\:bg-gray-100:hover {
+  background-color: #334155 !important;
+}
+
+/* Dark mode for specific components */
+.dark header {
+  background-color: rgba(30, 41, 59, 0.95) !important;
+}
+
+.dark footer {
+  background-color: #0f172a !important;
+}
+
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+.dark .bg-gradient-to-br.from-primary-500\/10 {
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.1) 0%, #0f172a 50%, rgba(96, 165, 250, 0.1) 100%) !important;
+}
+
+/* Dark mode cards */
+.dark .rounded-2xl.shadow-lg,
+.dark .rounded-xl.shadow-lg {
+  background-color: #1e293b !important;
+  border: 1px solid #334155;
+}
+
+/* Dark mode modals */
+.dark .bg-black\/50,
+.dark .bg-black\/60 {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Dark mode for dropdowns */
+.dark .absolute.bg-white {
+  background-color: #1e293b !important;
+}
+
+/* Smooth transition for dark mode */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Dark mode for gradient backgrounds */
+.dark .from-purple-50,
+.dark .from-blue-50,
+.dark .from-green-50,
+.dark .from-red-50,
+.dark .from-orange-50,
+.dark .from-amber-50,
+.dark .from-pink-50 {
+  --tw-gradient-from: #1e293b !important;
+}
+
+.dark .to-blue-50,
+.dark .to-purple-50,
+.dark .to-green-50,
+.dark .to-red-50,
+.dark .to-orange-50,
+.dark .to-amber-50,
+.dark .to-pink-50 {
+  --tw-gradient-to: #0f172a !important;
+}
+
+/* Dark mode for prose content */
+.dark .prose {
+  color: #e2e8f0;
+}
+
+.dark .prose h1,
+.dark .prose h2,
+.dark .prose h3,
+.dark .prose h4 {
+  color: #f1f5f9;
+}
+
+.dark .prose p {
+  color: #cbd5e1;
+}
+
+/* Dark mode for specific page backgrounds */
+.dark .bg-gradient-to-br {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+}
+
+/* Dark mode for mobile nav */
+.dark nav.fixed {
+  background-color: rgba(30, 41, 59, 0.95) !important;
+}

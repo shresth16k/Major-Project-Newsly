@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Explore More - Newsly</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='global.css') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* RESET */
+body { margin: 0; font-family: 'Inter', sans-serif; background: #f8f7ff; color: #2a2a2a; }
+.header-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 12px 0;
+}
+.main-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  display: flex;              /* Make items go in a row */
+  align-items: center;        /* Vertical center alignment */
+  gap: 25px;                  /* Space between items */
+}
+
+/* Smooth Page Fade */
+body {
+  animation: fadeInPage 0.8s ease;
+}
+@keyframes fadeInPage {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Hero text gentle fade-in slide */
+.hero-banner h1, .hero-banner p {
+  animation: slideFade 1.2s ease both;
+}
+@keyframes slideFade {
+  0% { opacity:0; transform: translateY(20px); }
+  100% { opacity:1; transform: translateY(0); }
+}
+
+/* Add soft gradient behind features section */
+.features-grid {
+  position: relative;
+  padding: 40px 0;
+}
+.features-grid::before {
+  content:"";
+  position: absolute;
+  top:0; left:0; right:0; bottom:0;
+  background: linear-gradient(180deg,#ffffff, #f1ecff, #ffffff);
+  z-index:-1;
+}
+
+/* Feature card glow hover effect */
+.feature-card {
+  transition: transform .35s ease, box-shadow .35s ease;
+}
+.feature-card:hover {
+  transform: translateY(-8px) scale(1.03);
+  box-shadow: 0 12px 28px rgba(87,10,140,0.25);
+  border: 1px solid #e4d6ff;
+}
+
+/* Section Title Style */
+.section-title {
+  text-align:center;
+  font-size:2.1rem;
+  font-weight:700;
+  color:#570a8c;
+  margin:60px 0 20px;
+}
+
+/* Info Highlight Box */
+.info-box {
+  width: 90%;
+  margin: 0 auto 60px;
+  background:white;
+  padding: 25px 35px;
+  border-radius: 14px;
+  box-shadow: 0 6px 20px rgba(135,123,235,0.2);
+  line-height:1.6;
+  text-align:center;
+  font-size:1.08rem;
+  animation: fadeUp 0.9s ease both;
+}
+
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(20px); }
+  to { opacity:1; transform:translateY(0); }
+}
+
+/* Future Vision cards */
+.vision-cards {
+  width:90%;
+  margin:auto;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:1.5rem;
+  padding-bottom:50px;
+}
+.vision-card {
+  background:#ffffff;
+  border-radius:1rem;
+  padding:1.6rem;
+  text-align:center;
+  box-shadow:0 6px 18px rgba(0,0,0,0.08);
+  transition:.3s ease;
+}
+.vision-card:hover {
+  transform: translateY(-6px);
+  box-shadow:0 10px 24px rgba(0,0,0,0.18);
+}
+
+
+/* MAIN CONTENT BELOW */
+.main-content { overflow-y:auto; height:auto; padding-bottom:40px; }
+
+/* Hero Banner */
+.hero-banner {
+  padding: 3rem 2rem;
+  background: linear-gradient(90deg, #570a8c, #857beb);
+  color: white;
+  text-align: center;
+  border-radius: 0 0 1.5rem 1.5rem;
+  margin-bottom: 2rem;
+  margin-top: 40px;
+}
+.hero-banner h1 { font-size:2.4rem; font-weight:700; margin-bottom:.5rem; }
+
+/* Feature Cards */
+.features-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1.5rem; width:90%; margin:auto; }
+.feature-card {
+  background:#fff; padding:1.6rem; border-radius:1rem;
+  box-shadow:0 4px 12px rgba(0,0,0,0.1);
+  text-align:center; transition:.3s;
+}
+.feature-card:hover { transform:scale(1.05); box-shadow:0 8px 20px rgba(0,0,0,0.18); }
+
+/* Footer */
+.footer { text-align:center; padding:1rem; color:#570a8c; background:#f8f7ff; font-weight:600;}
+</style>
+</head>
+<body>
+
+<!-- ✅ NAVBAR FROM INDEX -->
+<header class="site-header" style="position:sticky; top:0; z-index:1000; background:white; box-shadow:0 2px 6px rgba(0,0,0,0.08);">
+  <div class="container header-container">
+    <a href="{{ url_for('home') }}">
+      <img src="{{ url_for('static', filename='images/1a8bbdb852d2ffc01641f45f7667681d4df54d20.png') }}" alt="Newsly Logo" class="logo">
+    </a>
+    <nav class="main-nav">
+  <ul>
+    <li><a href="{{ url_for('home') }}" class="nav-link">Home</a></li>
+    <li><a href="{{ url_for('about') }}">About us</a></li>
+
+    <li class="dropdown">
+      <a href="#categories" class="dropbtn">Categories</a>
+      <div class="dropdown-content">
+        <a href="#politics">Politics</a>
+        <a href="#sports">Sports</a>
+        <a href="#technology">Technology</a>
+        <a href="#health">Health</a>
+        <a href="#business">Business</a>
+        <a href="#finance">Finance</a>
+        <a href="#entertainment">Entertainment</a>
+      </div>
+    </li>
+
+    <li><a href="{{ url_for('privacy') }}">Privacy Policy</a></li>
+    <li><a href="{{ url_for('terms') }}">Terms of use</a></li>
+    <li><a href="{{ url_for('contact') }}">Contact us</a></li>
+  </ul>
+</nav>
+
+    {% if 'user_id' in session %}
+      <a href="{{ url_for('logout') }}" class="btn btn-primary login-btn">Log Out</a>
+    {% else %}
+      <a href="{{ url_for('login_page') }}" class="btn btn-primary login-btn">Log In</a>
+    {% endif %}
+
+    
+  </div>
+</header>
+<!-- PAGE CONTENT -->
+<div class="main-content">
+
+  <section class="hero-banner">
+    <h1>Explore What’s Coming Next in Newsly</h1>
+    <p>Discover upcoming AI innovations transforming intelligent news.</p>
+  </section>
+
+  <section class="features-grid">
+    <article class="feature-card">
+      <h3>Mobile App</h3><p>Personalized summaries on the go.</p>
+    </article>
+    <article class="feature-card">
+      <h3>Live News Feed</h3><p>Real-time AI summarization.</p>
+    </article>
+    <article class="feature-card">
+      <h3>Voice Summaries</h3><p>Listen hands-free.</p>
+    </article>
+    <article class="feature-card">
+      <h3>AI Recommendations</h3><p>Smart personalization.</p>
+    </article>
+  </section>
+  <h2 class="section-title">Why This Matters</h2>
+<div class="info-box">
+  Newsly isn't just adding features — it's evolving into a complete intelligent news ecosystem.
+  Our goal is to reduce noise and amplify clarity for every reader, researcher, and learner.
+</div>
+
+<h2 class="section-title">Future Vision</h2>
+<div class="vision-cards">
+  <div class="vision-card">
+    <h3>Human + AI Collaboration</h3>
+    <p>News that adapts to you, your interests, and your pace — not the other way around.</p>
+  </div>
+  <div class="vision-card">
+    <h3>Accessible Intelligence</h3>
+    <p>Complex information simplified for everyone, regardless of background or language.</p>
+  </div>
+  <div class="vision-card">
+    <h3>Trust & Transparency</h3>
+    <p>Verifiable sources, bias detection, and clarity-first reporting.</p>
+  </div>
+</div>
+
+
+</div>
+<footer id="section-footer" class="site-footer" style="background-color: #570a8c; color: white; text-align: center;">
+  <div class="container footer-container">
+    <div class="footer-top">
+      <div class="footer-about">
+        <a href="{{ url_for('home') }}">
+          <img src="{{ url_for('static', filename='images/1a8bbdb852d2ffc01641f45f7667681d4df54d20.png') }}" alt="Newsly Logo" class="footer-logo">
+        </a>
+        <p>AI that turns headlines into insights — faster than ever before!</p>
+      </div>
+      <div class="footer-links-group">
+        <div id="contact" class="footer-links">
+          <h4>CONTACT US</h4>
+          <a href="mailto:support@neswly.com">support@neswly.com</a>
+        </div>
+        <div id="quick-links" class="footer-links">
+          <h4>QUICK LINKS</h4>
+          <ul>
+            <li><a href="{{ url_for('privacy') }}">Privacy Policy</a></li>
+            <li><a href="{{ url_for('terms') }}">Terms & Conditions</a></li>
+            <li><a href="{{ url_for('contact') }}">Contact Us</a></li>
+            <li><a href="{{ url_for('about') }}">About Us</a></li>
+            <li><a href="{{ url_for('faq') }}">FAQs</a></li>
+          </ul>
+        </div>
+        <div id="social-media" class="footer-links">
+          <h4>FOLLOW US</h4>
+          <div class="social-icons">
+            <a href="https://facebook.com/yourpage" target="_blank" rel="noopener" aria-label="Facebook">
+              <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M22.675 0h-21.35C.593 0 0 .593 0 1.325v21.351C0 23.406.593 24 1.325 24h11.495v-9.294H9.691v-3.622h3.129V8.412c0-3.1 1.893-4.788 4.658-4.788 1.325 0 2.466.099 2.797.143v3.24l-1.918.001c-1.505 0-1.797.716-1.797 1.766v2.317h3.59l-.467 3.622h-3.123V24h6.116C23.406 24 24 23.407 24 22.676V1.325C24 .593 23.406 0 22.675 0z"/></svg>
+            </a>
+            <a href="https://twitter.com/yourprofile" target="_blank" rel="noopener" aria-label="Twitter">
+              <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M24 4.557a9.835 9.835 0 01-2.828.775 4.936 4.936 0 002.165-2.724c-.95.564-2.005.974-3.127 1.195a4.92 4.92 0 00-8.386 4.482c-4.083-.195-7.702-2.159-10.126-5.134a4.822 4.822 0 00-.666 2.475 4.918 4.918 0 002.188 4.096 4.9 4.9 0 01-2.228-.616c-.054 2.281 1.581 4.415 3.95 4.89a4.935 4.935 0 01-2.224.086 4.926 4.926 0 004.6 3.42 9.868 9.868 0 01-6.1 2.104c-.397 0-.788-.023-1.17-.069a13.945 13.945 0 007.557 2.21c9.054 0 14-7.505 14-14.004 0-.213-.005-.425-.014-.636A10.012 10.012 0 0024 4.557z"/></svg>
+            </a>
+            <a href="https://linkedin.com/in/yourprofile" target="_blank" rel="noopener" aria-label="LinkedIn">
+              <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.98 3.5C3.36 3.5 2 4.862 2 6.483s1.36 2.983 2.98 2.983 2.98-1.36 2.98-2.983S6.6 3.5 4.98 3.5zM2.389 8.47h5.173v13.092H2.39V8.47zM10.67 8.397c-1.638 0-2.764 1.14-3.222 2.176h-.047v-1.852H4.98v13.092h4.597v-7.158c0-.383.028-.766.141-1.038.308-.766 1.007-1.56 2.183-1.56 1.541 0 2.158 1.177 2.158 2.9v7.756h4.597v-8.312c0-4.449-2.373-6.52-5.541-6.52z"/></svg>
+            </a>
+            <a href="https://instagram.com/yourprofile" target="_blank" rel="noopener" aria-label="Instagram">
+              <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7.75 2h8.5A5.753 5.753 0 0122 7.75v8.5A5.753 5.753 0 0116.25 22h-8.5A5.753 5.753 0 012 16.25v-8.5A5.753 5.753 0 017.75 2zm4.25 5.5c-2.481 0-4.5 2.019-4.5 4.5s2.019 4.5 4.5 4.5 4.5-2.019 4.5-4.5-2.019-4.5-4.5-4.5zm6.5-.75a1.25 1.25 0 11-2.5 0 1.25 1.25 0 012.5 0zM12 9.75a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5z"/></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2025 Newsly Solutions Pvt. Ltd. All Rights Reserved.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
