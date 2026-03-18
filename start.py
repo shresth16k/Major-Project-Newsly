@@ -22,10 +22,20 @@ def run_flask():
         stderr=subprocess.DEVNULL
     )
 
+import shutil
+
 def run_vite():
     """Run Vite dev server"""
     os.chdir('newsly-react')
-    subprocess.run(['npm', 'run', 'dev'], shell=True)
+    npm_cmd = 'npm.cmd' if os.name == 'nt' else 'npm'
+    
+    # Check if npm.cmd is in PATH; if not, fallback to D:\node
+    if os.name == 'nt' and not shutil.which('npm.cmd'):
+        fallback_path = r'D:\node\npm.cmd'
+        if os.path.exists(fallback_path):
+            npm_cmd = fallback_path
+
+    subprocess.run([npm_cmd, 'run', 'dev'])
 
 def main():
     print("=" * 50)

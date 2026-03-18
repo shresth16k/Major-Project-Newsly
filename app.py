@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
+from flask import Flask, request, session, jsonify
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -36,10 +36,16 @@ app = Flask(__name__, template_folder='templates', static_folder='static')
 app.config['SECRET_KEY'] = os.environ.get('NEWSLY_SECRET','dev-secret')
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = False
-os.makedirs(os.path.join(os.path.dirname(__file__), 'instance'), exist_ok=True)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///newsly_new.db'
+import tempfile
+tmp_dir = tempfile.gettempdir()
+instance_path = os.path.join(tmp_dir, 'instance')
+os.makedirs(instance_path, exist_ok=True)
+db_path = os.path.join(instance_path, 'newsly_new.db')
+
+# Use 4 slashes for absolute paths on Windows correctly or just standard f-string
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
+app.config['UPLOAD_FOLDER'] = os.path.join(tmp_dir, 'uploads')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 db = SQLAlchemy(app)
@@ -75,8 +81,7 @@ def login_required(f):
     @wraps(f)
     def deco(*args, **kwargs):
         if not session.get('user_id'):
-            flash('Please log in', 'warning')
-            return redirect(url_for('login_page'))
+            return jsonify({'error': 'Please log in'}), 401
         return f(*args, **kwargs)
     return deco
 
@@ -86,12 +91,10 @@ def admin_required(f):
     def deco(*args, **kwargs):
         uid = session.get('user_id')
         if not uid:
-            flash('Please log in', 'warning')
-            return redirect(url_for('login_page'))
+            return jsonify({'error': 'Please log in'}), 401
         u = User.query.get(uid)
         if not u or not u.is_admin:
-            flash('Admin required', 'danger')
-            return redirect(url_for('home'))
+            return jsonify({'error': 'Admin required'}), 403
         return f(*args, **kwargs)
     return deco
 
@@ -220,258 +223,6 @@ def summarize_text_auto(text, length='medium'):
 
 
 
-@app.route('/signup', methods=['GET','POST'])
-def signup():
-    if request.method == 'POST':
-        email = request.form.get('email','').strip().lower()
-        password = request.form.get('password','')
-        if not email or not password:
-            flash('Email and password required', 'warning')
-            return redirect(url_for('signup'))
-        if User.query.filter_by(email=email).first():
-            flash('Email already exists', 'warning')
-            return redirect(url_for('signup'))
-        u = User(email=email)
-        u.set_password(password)
-        db.session.add(u)
-        db.session.commit()
-        flash('Account created. Please log in.', 'success')
-        return redirect(url_for('login_page'))
-    return render_template('signup.html')
-
-@app.route('/login', methods=['GET','POST'])
-def login_page():
-    if request.method == 'POST':
-        email = request.form.get('email','').strip().lower()
-        password = request.form.get('password','')
-        u = User.query.filter_by(email=email).first()
-
-        if not u:
-            flash('Invalid email or password', 'danger')
-            return redirect(url_for('login_page'))
-
-        if u.check_password(password):
-            session['user_id'] = u.id
-            flash('Logged in successfully', 'success')
-            
-            # Check if admin
-            if u.is_admin:
-                return redirect(url_for('admin_login'))
-            else:
-                return redirect(url_for('summarize_get'))
-        else:
-            flash('Invalid email or password', 'danger')
-            return redirect(url_for('login_page'))
-
-    return render_template('login.html')
-
-@app.route('/logout')
-def logout():
-    session.clear()  
-    flash('You have been logged out.', 'info')
-    return redirect(url_for('login_page'))
-
-@app.route("/admin")
-@login_required
-def admin_dashboard():  # Home page of admin panel
-    # You can pass data to the template if needed
-    total_articles = 1245
-    avg_length = 118
-    popular_category = "Tech"
-    #return render_template("admin.html")
-    
-    return render_template('admin.html', total_articles=total_articles, avg_length=avg_length, popular_category=popular_category, articles=articles)
-
-# Articles page
-@app.route("/articles")
-@login_required
-def articles():
-    articles_list = [
-        {"title": "Article 1", "category": "Tech", "date_added": "2025-10-26", "views": 120, "summary_length": 350},
-        {"title": "Article 2", "category": "Health", "date_added": "2025-10-25", "views": 80, "summary_length": 220},
-    ]
-    return render_template("articles.html", articles=articles_list)
-
-# Users page
-@app.route("/users")
-@login_required
-def users():
-    users_list = [
-        {"name": "Alice", "email": "alice@example.com", "role": "Editor"},
-        {"name": "Bob", "email": "bob@example.com", "role": "Reader"},
-    ]
-    return render_template("users.html", users=users_list)
-
-# Analytics page
-@app.route("/analytics")
-@login_required
-def analytics():
-    return render_template("analytics.html")
-
-# Reports page
-@app.route("/reports")
-@login_required
-def reports():
-    return render_template("reports.html")
-
-# Settings page
-@app.route("/settings")
-@login_required
-def settings():
-    return render_template("settings.html")
-
-@app.route('/summarize', methods=['GET'])
-def summarize_get():
-    return render_template('summarize.html')
-
-@app.route('/summarize', methods=['POST'])
-@login_required
-def summarize_post():
-    text_input = request.form.get('text_input','').strip()
-    url_input = request.form.get('url_input','').strip()
-    length = request.form.get('summary_length','medium')  
-    title = request.form.get('title','Untitled')[:250]
-    source_text = ''
-
-    if text_input:
-        source_text = text_input
-    elif url_input:
-        source_text = fetch_text_from_url(url_input) or ''
-    else:
-        f = request.files.get('file_input')
-        if f:
-            fname = secure_filename(f.filename)
-            path = os.path.join(app.config['UPLOAD_FOLDER'], fname)
-            f.save(path)
-            try:
-                with open(path, 'rb') as fh:
-                    source_text = extract_text_from_pdf_file(fh)
-            except Exception as e:
-                logger.exception("Error reading uploaded: %s", e)
-                source_text = ''
-
-    if not source_text or len(source_text.strip()) < 20:
-        flash('Could not extract enough text. Try another input.', 'warning')
-        return redirect(url_for('summarize_get'))  
-
-    summary, method = summarize_text_auto(source_text, length=length)
-
-    s = None  
-    try:
-        s = Summary(
-            user_id=session.get('user_id'),
-            title=title,
-            original_text=source_text[:50000],
-            summary_text=summary,
-            method=method
-        )
-        db.session.add(s)
-        db.session.commit()
-    except Exception as e:
-        logger.exception("DB save failed: %s", e)
-
-    return render_template(
-        'result.html',
-        summary=summary,
-        original_text=source_text,
-        summary_id=getattr(s, 'id', None),
-        method=method
-    )
-
-
-@app.route('/history')
-@login_required
-def history():
-    uid = session.get('user_id')
-    summaries = Summary.query.filter_by(user_id=uid).order_by(Summary.created_at.desc()).all()
-    return render_template('history.html', summaries=summaries)
-
-
-@app.route('/view/<int:sid>')
-@login_required
-def view_summary(sid):
-    s = Summary.query.get_or_404(sid)
-    if s.user_id != session.get('user_id'):
-        flash('Access denied', 'danger')
-        return redirect(url_for('history'))
-    return render_template('result.html', summary=s.summary_text, original_text=s.original_text, summary_id=s.id, method=s.method)
-
-@app.route('/delete/<int:sid>', methods=['POST'])
-@login_required
-def delete_summary(sid):
-    s = Summary.query.get_or_404(sid)
-    if s.user_id != session.get('user_id'):
-        curr = User.query.get(session.get('user_id'))
-        if not curr or not curr.is_admin:
-            flash('Not authorized', 'danger')
-            return redirect(url_for('history'))
-    try:
-        db.session.delete(s)
-        db.session.commit()
-        flash('Summary deleted', 'success')
-    except Exception as e:
-        logger.exception("Delete failed: %s", e)
-        flash('Unable to delete', 'danger')
-    return redirect(url_for('history'))
-
-@app.route('/')
-def home():
-    return render_template('index.html')
-
-
-@app.route('/admin', methods=['GET', 'POST'])
-def admin_login():
-    if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
-
-        admin_user = User.query.filter_by(email=email).first()
-
-        if admin_user and admin_user.is_admin and check_password_hash(admin_user.password_hash, password):
-            session['user_id'] = admin_user.id
-            session['is_admin'] = True
-            flash('Welcome, Admin!', 'success')
-            return redirect(url_for('admin_panel'))
-        else:
-            flash('Invalid credentials or not an admin', 'danger')
-            return redirect(url_for('admin_login'))
-
-    return render_template('admin.html')
-
-@app.route('/admin/panel')
-@admin_required
-def admin_panel():
-    return render_template('admin.html')
-
-@app.route('/images/<path:filename>')
-def images(filename):
-    from flask import send_from_directory
-    return send_from_directory(os.path.join(app.root_path, 'static', 'images'), filename)
-
-@app.route('/about')
-def about():
-    return render_template('about.html')
-
-@app.route('/contact')
-def contact():
-    return render_template('contact.html')
-
-@app.route('/privacy')
-def privacy():
-    return render_template('privacy.html')
-
-@app.route('/terms')
-def terms():
-    return render_template('terms.html')
-@app.route('/explore')
-def explore():
-    return render_template('explore.html')
-@app.route('/faq')
-def faq():
-    return render_template('faq.html')
-@app.route('/forgot_password')
-def forgot_password():
-    return render_template('forgot_password.html')
 
 # ============ API ENDPOINTS FOR REACT FRONTEND ============
 

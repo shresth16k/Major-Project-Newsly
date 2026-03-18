@@ -1,8 +1,8 @@
 Flask
-Flask_SQLAlchemy
+Flask-SQLAlchemy
+Flask-Cors
+Werkzeug
 requests
 beautifulsoup4
 PyPDF2
-transformers>=4.0.0
-torch
 sumy
