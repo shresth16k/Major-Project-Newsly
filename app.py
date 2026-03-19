@@ -372,6 +372,8 @@ def api_verify():
 def analyze_fake_news(text):
     import re
     from collections import Counter
+    import logging
+    logger = logging.getLogger(__name__)
     
     text_lower = text.lower()
     words = re.findall(r'\w+', text_lower)
@@ -396,7 +398,7 @@ def analyze_fake_news(text):
     caps_words = len(re.findall(r'\b[A-Z]{3,}\b', text))
     
     # Calculate base score
-    base_score = 75
+    base_score = 65  # lower base score since web check carries weight now
     
     # Adjust score based on indicators
     score = base_score
@@ -405,8 +407,79 @@ def analyze_fake_news(text):
     score -= excessive_punct * 5
     score -= caps_words * 3
     
+    reasons = []
+    
+    # Real-world Web Check
+    try:
+        from duckduckgo_search import DDGS
+        
+        # Use full text for short queries, otherwise summary
+        if len(text) < 100:
+            query = text
+        else:
+            query_words = text.split()[:15]
+            query = " ".join(query_words).strip()
+            
+            if len(query) < 10:
+                query = " ".join(sorted(words, key=len, reverse=True)[:5])
+
+        results = list(DDGS().news(query, max_results=3))
+        if not results:
+            results = list(DDGS().text(query, max_results=3))
+        
+        fact_check_words = ['fact-check', 'fake', 'hoax', 'false', 'misleading', 'debunked', 'rumor', 'untrue']
+        
+        is_debunked = False
+        corroborated = 0
+        news_headlines = []
+        
+        # Extract important words, aggressively ignoring common ones
+        stopwords = {'is','are','am','the','a','an','and','or','but','in','on','at','to','for','with',
+                     'of','about','there','their','which','would','could','should','does','do','did',
+                     'was','were','has','have','had','been','be','how','what','when','where','why','who'}
+                     
+        important_words = [w for w in set(words) if len(w) > 4 and w not in stopwords]
+        if not important_words:
+            important_words = [w for w in set(words) if w not in stopwords]
+            
+        for r in results:
+            snippet = r.get('body', '').lower()
+            title = r.get('title', '').lower()
+            combined = snippet + " " + title
+            
+            if r.get('title'):
+                news_headlines.append(r.get('title'))
+            
+            # Check if this result is a fact-check debunking the claim
+            if any(fc in combined for fc in fact_check_words):
+                is_debunked = True
+                break
+            
+            # Check for corroboration - simple word overlap
+            match_count = sum(1 for w in important_words[:20] if w in combined)
+            if match_count >= max(1, len(important_words) // 2):
+                corroborated += 1
+                
+        if is_debunked:
+            score -= 40
+            reasons.append('News appears to be debunked or flagged as false online')
+        elif corroborated > 0:
+            score += 25
+            if news_headlines:
+                reasons.append(f'Current reported news: "{news_headlines[0]}"')
+            else:
+                reasons.append('Found corroborating reports from real-world web search')
+        else:
+            score -= 20
+            reasons.append('Could not find reliable corroborating reports online')
+            if len(text) < 100 and news_headlines:
+                reasons.append(f'Closest news found: "{news_headlines[0]}"')
+    except Exception as e:
+        logger.exception(f"Web search verification failed: {e}")
+        reasons.append('Unable to cross-reference with real-world news sources')
+
     # Normalize score
-    score = max(20, min(100, score))
+    score = max(10, min(100, score))
     
     # Determine verdict
     if score >= 80:
@@ -418,21 +491,14 @@ def analyze_fake_news(text):
     else:
         verdict = 'Likely Fake/Clickbait'
     
-    # Generate reasons
-    reasons = []
+    # Generate additional indicator reasons
     if credible_count > 0:
         reasons.append('Contains references to sources or research')
-    if clickbait_count == 0:
-        reasons.append('No sensationalist language detected')
-    elif clickbait_count > 2:
+    if clickbait_count > 2:
         reasons.append(f'Contains {clickbait_count} clickbait phrases')
-    if excessive_punct == 0:
-        reasons.append('Professional punctuation usage')
-    else:
+    if excessive_punct > 0:
         reasons.append('Excessive punctuation detected')
-    if caps_words == 0:
-        reasons.append('No excessive capitalization')
-    else:
+    if caps_words > 0:
         reasons.append(f'{caps_words} words in ALL CAPS detected')
     if len(words) > 100:
         reasons.append('Substantial content length')
