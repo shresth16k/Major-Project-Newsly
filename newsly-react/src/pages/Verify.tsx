@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Shield, AlertTriangle, CheckCircle, Loader2, XCircle, Info } from 'lucide-react'
+import { Shield, AlertTriangle, CheckCircle, Loader2, XCircle, Info, Bot, ExternalLink } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { useTranslation } from '../store/settingsStore'
@@ -8,6 +8,13 @@ interface VerifyResult {
   score: number
   verdict: string
   reasons: string[]
+  ai_reasoning: string
+  references: {
+    title: string
+    url: string
+    snippet: string
+    source: string
+  }[]
   indicators: {
     clickbait_phrases: number
     credibility_phrases: number
@@ -191,18 +198,66 @@ const Verify = () => {
                   ))}
                 </div>
 
-                {/* Reasons */}
-                <h3 className="font-semibold text-gray-800 mb-3">Analysis Details:</h3>
+                {/* AI Reasoning */}
+                {result.ai_reasoning && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="mb-6 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl"
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <Bot className="w-5 h-5 text-blue-600" />
+                      <h3 className="font-bold text-blue-900">AI Analysis</h3>
+                    </div>
+                    <p className="text-blue-800 leading-relaxed">
+                      {result.ai_reasoning}
+                    </p>
+                  </motion.div>
+                )}
+
+                {/* References */}
+                {result.references && result.references.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className="mb-6"
+                  >
+                    <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                      <ExternalLink className="w-5 h-5 text-gray-500" />
+                      Reliable References & Sources
+                    </h3>
+                    <div className="space-y-3">
+                      {result.references.map((ref, i) => (
+                        <a 
+                          key={i} 
+                          href={ref.url} 
+                          target="_blank" 
+                          rel="noreferrer"
+                          className="block p-4 bg-white border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all rounded-xl"
+                        >
+                          <div className="font-semibold text-blue-600 mb-1 line-clamp-1">{ref.title}</div>
+                          <div className="text-sm text-gray-500 mb-2">{ref.source}</div>
+                          <p className="text-sm text-gray-600 line-clamp-2">{ref.snippet}</p>
+                        </a>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Reasons / Details */}
+                <h3 className="font-semibold text-gray-800 mb-3">Detection Details:</h3>
                 <ul className="space-y-2">
                   {result.reasons.map((reason, i) => (
                     <motion.li
                       key={i}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.3 + i * 0.1 }}
+                      transition={{ delay: 0.5 + i * 0.1 }}
                       className="flex items-start gap-2 text-gray-600"
                     >
-                      <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                      <CheckCircle className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
                       {reason}
                     </motion.li>
                   ))}

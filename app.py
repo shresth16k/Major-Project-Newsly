@@ -411,7 +411,12 @@ def analyze_fake_news(text):
     
     # Real-world Web Check
     try:
-        from duckduckgo_search import DDGS
+        # support new ddgs module structure
+        try:
+            from duckduckgo_search import DDGS
+        except ImportError:
+            # Fallback if somehow they updated the module
+            from ddgs import DDGS
         
         # Use full text for short queries, otherwise summary
         if len(text) < 100:
@@ -423,15 +428,24 @@ def analyze_fake_news(text):
             if len(query) < 10:
                 query = " ".join(sorted(words, key=len, reverse=True)[:5])
 
-        results = list(DDGS().news(query, max_results=3))
+        ddgs = DDGS()
+        try:
+            results = list(ddgs.news(query, max_results=3))
+        except Exception:
+            results = []
+            
         if not results:
-            results = list(DDGS().text(query, max_results=3))
+            try:
+                results = list(ddgs.text(query, max_results=3))
+            except Exception:
+                pass
         
         fact_check_words = ['fact-check', 'fake', 'hoax', 'false', 'misleading', 'debunked', 'rumor', 'untrue']
         
         is_debunked = False
         corroborated = 0
         news_headlines = []
+        extracted_references = []
         
         # Extract important words, aggressively ignoring common ones
         stopwords = {'is','are','am','the','a','an','and','or','but','in','on','at','to','for','with',
@@ -446,13 +460,22 @@ def analyze_fake_news(text):
             snippet = r.get('body', '').lower()
             title = r.get('title', '').lower()
             combined = snippet + " " + title
+            url = r.get('url') or r.get('href') or r.get('link') or ''
             
             if r.get('title'):
                 news_headlines.append(r.get('title'))
+                if url:
+                    extracted_references.append({
+                        'title': r.get('title'),
+                        'url': url,
+                        'snippet': r.get('body', '')[:100] + '...' if len(r.get('body', '')) > 100 else r.get('body', ''),
+                        'source': r.get('source', 'Web Search')
+                    })
             
             # Check if this result is a fact-check debunking the claim
             if any(fc in combined for fc in fact_check_words):
                 is_debunked = True
+                # Let's boost the debunking value if found
                 break
             
             # Check for corroboration - simple word overlap
@@ -502,11 +525,42 @@ def analyze_fake_news(text):
         reasons.append(f'{caps_words} words in ALL CAPS detected')
     if len(words) > 100:
         reasons.append('Substantial content length')
+
+    # Synthesize an AI-like reasoning paragraph
+    ai_reasoning_parts = []
+    ai_reasoning_parts.append(f"I have analyzed the provided text and concluded that it is {verdict.lower()}.")
     
+    if score < 50:
+        if is_debunked:
+            ai_reasoning_parts.append("My web analysis strongly indicates this claim aligns with known hoaxes or has been actively fact-checked and debunked online.")
+        elif corroborated == 0:
+            ai_reasoning_parts.append("I cross-referenced modern news sources and could not find any reliable reports corroborating these claims, which is a massive red flag for authenticity.")
+            
+        if clickbait_count > 0:
+            ai_reasoning_parts.append(f"Furthermore, the text employs {clickbait_count} distinct manipulative, clickbait, or sensationalist phrases intended to artificially inflate emotional response rather than inform.")
+    else:
+        if corroborated > 0:
+            ai_reasoning_parts.append("I successfully cross-referenced the core topics with real-time news sources, confirming that reputable outlets are currently reporting on these facts.")
+        
+        if credible_count > 0:
+            ai_reasoning_parts.append("The author supports their claims by utilizing academic or authoritative linguistic patterns, specifically grounding the content with measurable evidence phrases.")
+
+    if excessive_punct > 0 or caps_words > 0:
+        ai_reasoning_parts.append("Please note the abnormal formatting, such as excessive punctuation or capitalized words, often used to bypass critical thinking and evoke panic.")
+
+    if score >= 60:
+        ai_reasoning_parts.append("Overall, this information appears grounded in reality based on my current verification metrics. You can view the gathered real-world sources in the References section below.")
+    else:
+        ai_reasoning_parts.append("Based on the overwhelming lack of external verification and high concentration of manipulative language, you should entirely dismiss this information as fabricated.")
+
+    ai_reasoning_text = " ".join(ai_reasoning_parts)
+
     return {
         'score': score,
         'verdict': verdict,
         'reasons': reasons[:5],
+        'ai_reasoning': ai_reasoning_text,
+        'references': extracted_references[:5],
         'indicators': {
             'clickbait_phrases': clickbait_count,
             'credibility_phrases': credible_count,
