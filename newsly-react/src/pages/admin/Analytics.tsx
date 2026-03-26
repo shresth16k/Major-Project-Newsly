@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { BarChart3, TrendingUp, Users, FileText, Calendar, RefreshCw } from 'lucide-react'
+import { BarChart3, TrendingUp, Users, FileText, Calendar, RefreshCw, AlertTriangle, Shield } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface AnalyticsData {
@@ -10,6 +10,24 @@ interface AnalyticsData {
   avgSummaryLength: number
   methodDistribution: { [key: string]: number }
   dailyActivity: { date: string; count: number }[]
+}
+
+interface VerifyLog {
+  id: number;
+  user_id: number | null;
+  text_preview: string;
+  score: number;
+  verdict: string;
+  created_at: string;
+}
+
+interface SentimentLog {
+  id: number;
+  user_id: number | null;
+  text_preview: string;
+  sentiment: string;
+  confidence: number;
+  created_at: string;
 }
 
 const Analytics = () => {
@@ -22,6 +40,7 @@ const Analytics = () => {
     dailyActivity: []
   })
   const [loading, setLoading] = useState(true)
+  const [analysisLogs, setAnalysisLogs] = useState<{verify: VerifyLog[], sentiment: SentimentLog[]}>({verify: [], sentiment: []})
 
   const fetchAnalytics = async () => {
     try {
@@ -60,6 +79,16 @@ const Analytics = () => {
           }))
         }
         
+        // Fetch analysis logs
+        const analysisRes = await fetch('/api/admin/analysis_logs', { credentials: 'include' })
+        if (analysisRes.ok) {
+          const ad = await analysisRes.json()
+          setAnalysisLogs({
+            verify: ad.verify_logs || [],
+            sentiment: ad.sentiment_logs || []
+          })
+        }
+
         setData({
           totalUsers: statsData.total_users || 0,
           totalSummaries: statsData.total_summaries || 0,
@@ -213,6 +242,100 @@ const Analytics = () => {
               <div className="text-sm text-purple-700 font-medium">Avg. Summary Quality</div>
               <div className="text-xs text-purple-600 mt-1">Based on length (x100 chars)</div>
             </div>
+          </div>
+        </div>
+
+        {/* Global Analytics Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 mt-8">
+          {/* Fake News Verdicts Chart */}
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-orange-500" /> API: Verify Verdicts
+            </h2>
+            <div className="space-y-4">
+              {['Likely Fake/Clickbait', 'Mixed/Unverified', 'Credible'].map((verdict, i) => {
+                const count = analysisLogs.verify.filter((v: VerifyLog) => v.verdict === verdict).length
+                const total = analysisLogs.verify.length
+                const percentage = total > 0 ? Math.round((count / total) * 100) : 0
+                const colors = ['bg-red-500', 'bg-yellow-500', 'bg-green-500']
+                return (
+                  <div key={verdict}>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="font-medium text-gray-700">{verdict}</span>
+                      <span className="text-gray-500 font-bold">{percentage}% <span className="text-gray-400 font-normal">({count})</span></span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-2.5">
+                      <motion.div initial={{ width: 0 }} animate={{ width: `${percentage}%` }} transition={{ duration: 1 }} className={`h-2.5 rounded-full ${colors[i]}`} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+          
+          {/* Sentiment Ratios Chart */}
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-purple-500" /> API: Global Sentiments
+            </h2>
+            <div className="space-y-4">
+              {['positive', 'neutral', 'negative'].map((sent, i) => {
+                const count = analysisLogs.sentiment.filter((s: SentimentLog) => s.sentiment === sent).length
+                const total = analysisLogs.sentiment.length
+                const percentage = total > 0 ? Math.round((count / total) * 100) : 0
+                const colors = ['bg-green-500', 'bg-gray-400', 'bg-red-500']
+                return (
+                  <div key={sent}>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="font-medium text-gray-700 capitalize">{sent}</span>
+                      <span className="text-gray-500 font-bold">{percentage}% <span className="text-gray-400 font-normal">({count})</span></span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-2.5">
+                      <motion.div initial={{ width: 0 }} animate={{ width: `${percentage}%` }} transition={{ duration: 1 }} className={`h-2.5 rounded-full ${colors[i]}`} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Global Details Table */}
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 mb-8">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Recent API Analysis Checks</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm text-gray-600">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="p-3 font-semibold text-gray-700">Type</th>
+                  <th className="p-3 font-semibold text-gray-700">Content Preview</th>
+                  <th className="p-3 font-semibold text-gray-700">Result</th>
+                  <th className="p-3 font-semibold text-gray-700">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {[...analysisLogs.verify.map(v => ({...v, _type: 'Verify'})), ...analysisLogs.sentiment.map(s => ({...s, _type: 'Sentiment'}))]
+                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                  .slice(0, 30)
+                  .map((log: any, idx) => (
+                  <tr key={idx} className="hover:bg-gray-50/50">
+                    <td className="p-3">
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-md ${log._type === 'Verify' ? 'bg-orange-100 text-orange-800' : 'bg-purple-100 text-purple-800'}`}>
+                        {log._type}
+                      </span>
+                    </td>
+                    <td className="p-3 max-w-sm truncate" title={log.text_preview}>"{log.text_preview}"</td>
+                    <td className="p-3 font-medium text-gray-800">
+                      {log._type === 'Verify' ? `${log.verdict} (${log.score}%)` : <span className="capitalize">{log.sentiment} ({log.confidence}%)</span>}
+                    </td>
+                    <td className="p-3 text-gray-500 whitespace-nowrap">{new Date(log.created_at).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {analysisLogs.verify.length === 0 && analysisLogs.sentiment.length === 0 && (
+              <div className="text-center text-gray-500 py-8">No analysis checks logged yet.</div>
+            )}
           </div>
         </div>
       </div>

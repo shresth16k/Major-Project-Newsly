@@ -69,6 +69,22 @@ class Summary(db.Model):
     method = db.Column(db.String(50))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class VerifyLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    text_preview = db.Column(db.String(200))
+    score = db.Column(db.Integer)
+    verdict = db.Column(db.String(50))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class SentimentLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    text_preview = db.Column(db.String(200))
+    sentiment = db.Column(db.String(50))
+    confidence = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 with app.app_context():
     db.create_all()
     if not User.query.filter_by(email='admin@newsly.local').first():
@@ -367,6 +383,20 @@ def api_verify():
     
     # Analyze the text for fake news indicators
     result = analyze_fake_news(text)
+    
+    try:
+        vlog = VerifyLog(
+            user_id=session.get('user_id'),
+            text_preview=text[:190] + '...',
+            score=result.get('score', 0),
+            verdict=result.get('verdict', 'Unknown')
+        )
+        db.session.add(vlog)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f"Failed to log verify request: {e}")
+        
     return jsonify(result)
 
 def analyze_fake_news(text):
@@ -579,6 +609,20 @@ def api_sentiment():
         return jsonify({'error': 'Please provide more text to analyze'}), 400
     
     result = analyze_sentiment(text)
+    
+    try:
+        slog = SentimentLog(
+            user_id=session.get('user_id'),
+            text_preview=text[:190] + '...',
+            sentiment=result.get('sentiment', 'neutral'),
+            confidence=result.get('confidence', 0)
+        )
+        db.session.add(slog)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f"Failed to log sentiment request: {e}")
+        
     return jsonify(result)
 
 def analyze_sentiment(text):
@@ -832,6 +876,24 @@ def api_admin_summaries():
         } for s in summaries]
     })
 
+@app.route('/api/admin/summaries/<int:sid>/analysis', methods=['GET'])
+@login_required
+def api_admin_summary_analysis(sid):
+    uid = session.get('user_id')
+    current_user = User.query.get(uid)
+    if not current_user or not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    s = Summary.query.get_or_404(sid)
+    
+    sentiment_result = analyze_sentiment(s.summary_text or s.original_text or '')
+    fake_result = analyze_fake_news(s.original_text or s.summary_text or '')
+    
+    return jsonify({
+        'sentiment': sentiment_result,
+        'fake_news': fake_result
+    })
+
 @app.route('/api/admin/stats', methods=['GET'])
 @login_required
 def api_admin_stats():
@@ -856,12 +918,54 @@ def api_admin_stats():
     if summaries:
         total_length = sum(len(s.summary_text or '') for s in summaries)
         avg_length = total_length // len(summaries)
+        
+    total_verifies = VerifyLog.query.count()
+    fake_verifies = VerifyLog.query.filter(VerifyLog.score < 60).count()
+    
+    total_sentiments = SentimentLog.query.count()
+    positive_sentiments = SentimentLog.query.filter_by(sentiment='positive').count()
+    negative_sentiments = SentimentLog.query.filter_by(sentiment='negative').count()
     
     return jsonify({
         'total_users': total_users,
         'total_summaries': total_summaries,
         'todays_summaries': todays_summaries,
-        'avg_summary_length': avg_length
+        'avg_summary_length': avg_length,
+        'total_verifies': total_verifies,
+        'fake_verifies': fake_verifies,
+        'total_sentiments': total_sentiments,
+        'positive_sentiments': positive_sentiments,
+        'negative_sentiments': negative_sentiments
+    })
+
+@app.route('/api/admin/analysis_logs', methods=['GET'])
+@login_required
+def api_admin_analysis_logs():
+    uid = session.get('user_id')
+    current_user = User.query.get(uid)
+    if not current_user or not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    verify_logs = VerifyLog.query.order_by(VerifyLog.created_at.desc()).limit(50).all()
+    sentiment_logs = SentimentLog.query.order_by(SentimentLog.created_at.desc()).limit(50).all()
+    
+    return jsonify({
+        'verify_logs': [{
+            'id': v.id,
+            'user_id': v.user_id,
+            'text_preview': v.text_preview,
+            'score': v.score,
+            'verdict': v.verdict,
+            'created_at': v.created_at.isoformat() if v.created_at else None
+        } for v in verify_logs],
+        'sentiment_logs': [{
+            'id': s.id,
+            'user_id': s.user_id,
+            'text_preview': s.text_preview,
+            'sentiment': s.sentiment,
+            'confidence': s.confidence,
+            'created_at': s.created_at.isoformat() if s.created_at else None
+        } for s in sentiment_logs]
     })
 
 @app.route('/api/admin/settings', methods=['GET'])

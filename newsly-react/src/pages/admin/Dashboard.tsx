@@ -1,5 +1,5 @@
-import { FileText, Users, TrendingUp, Eye, Trash2, Edit3, RefreshCw } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { FileText, Users, TrendingUp, Eye, Trash2, Edit3, RefreshCw, AlertTriangle, Shield, ChevronDown, ChevronUp } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 
@@ -24,6 +24,25 @@ interface AdminStats {
   totalSummaries: number
   todaysSummaries: number
   avgSummaryLength: number
+  totalVerifies: number
+  fakeVerifies: number
+  totalSentiments: number
+  positiveSentiments: number
+  negativeSentiments: number
+}
+
+interface AnalysisData {
+  sentiment: {
+    sentiment: string;
+    confidence: number;
+    emotions: { name: string; value: number }[];
+  };
+  fake_news: {
+    score: number;
+    verdict: string;
+    reasons: string[];
+    ai_reasoning: string;
+  };
 }
 
 const AdminDashboard = () => {
@@ -33,11 +52,18 @@ const AdminDashboard = () => {
     totalUsers: 0,
     totalSummaries: 0,
     todaysSummaries: 0,
-    avgSummaryLength: 0
+    avgSummaryLength: 0,
+    totalVerifies: 0,
+    fakeVerifies: 0,
+    totalSentiments: 0,
+    positiveSentiments: 0,
+    negativeSentiments: 0
   })
   const [loading, setLoading] = useState(true)
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [newEmail, setNewEmail] = useState('')
+  const [analyzingId, setAnalyzingId] = useState<number | null>(null)
+  const [analysisData, setAnalysisData] = useState<Record<number, AnalysisData>>({})
 
   // Fetch admin data
   const fetchAdminData = async () => {
@@ -66,7 +92,12 @@ const AdminDashboard = () => {
           totalUsers: statsData.total_users || 0,
           totalSummaries: statsData.total_summaries || 0,
           todaysSummaries: statsData.todays_summaries || 0,
-          avgSummaryLength: statsData.avg_summary_length || 0
+          avgSummaryLength: statsData.avg_summary_length || 0,
+          totalVerifies: statsData.total_verifies || 0,
+          fakeVerifies: statsData.fake_verifies || 0,
+          totalSentiments: statsData.total_sentiments || 0,
+          positiveSentiments: statsData.positive_sentiments || 0,
+          negativeSentiments: statsData.negative_sentiments || 0
         })
       }
 
@@ -81,6 +112,29 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchAdminData()
   }, [])
+
+  // Analyze individual summary content on demand
+  const analyzeSummary = async (id: number) => {
+    if (analysisData[id] && analyzingId !== id) {
+      // Data already fetched
+      return
+    }
+    setAnalyzingId(id)
+    try {
+      const res = await fetch(`/api/admin/summaries/${id}/analysis`, { credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json()
+        setAnalysisData(prev => ({ ...prev, [id]: data }))
+        toast.success('Analysis complete')
+      } else {
+        toast.error('Failed to analyze content')
+      }
+    } catch (error) {
+      toast.error('Failed to analyze content')
+    } finally {
+      setAnalyzingId(null)
+    }
+  }
 
   // Delete user
   const deleteUser = async (userId: number) => {
@@ -127,10 +181,10 @@ const AdminDashboard = () => {
   }
 
   const statsData = [
-    { icon: Users, label: 'Total Users', value: stats.totalUsers.toString(), change: '+12%', color: 'bg-blue-500' },
-    { icon: FileText, label: 'Total Summaries', value: stats.totalSummaries.toString(), change: '+8%', color: 'bg-green-500' },
-    { icon: TrendingUp, label: 'Today\'s Summaries', value: stats.todaysSummaries.toString(), change: '+23%', color: 'bg-purple-500' },
-    { icon: Eye, label: 'Avg. Summary Length', value: `${stats.avgSummaryLength} chars`, change: '+15%', color: 'bg-orange-500' },
+    { icon: Users, label: 'Total Users', value: stats.totalUsers.toString(), change: `+${stats.todaysSummaries} today`, color: 'bg-blue-500' },
+    { icon: FileText, label: 'Total Summaries', value: stats.totalSummaries.toString(), change: `Avg ${stats.avgSummaryLength} chars`, color: 'bg-green-500' },
+    { icon: Shield, label: 'News Verified', value: stats.totalVerifies.toString(), change: `${stats.totalVerifies ? Math.round((stats.fakeVerifies / stats.totalVerifies) * 100) : 0}% Fake`, color: 'bg-red-500' },
+    { icon: TrendingUp, label: 'Sentiments Analyzed', value: stats.totalSentiments.toString(), change: `${stats.totalSentiments ? Math.round((stats.positiveSentiments / stats.totalSentiments) * 100) : 0}% Positive`, color: 'bg-purple-500' },
   ]
 
   const recentActivity = summaries.slice(0, 5).map(summary => ({
@@ -292,6 +346,95 @@ const AdminDashboard = () => {
                 </div>
               )
             })}
+          </div>
+        </div>
+
+        {/* Content Moderation Section */}
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 mb-8">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <Shield className="w-5 h-5 text-gray-500" /> Content Moderation & Analysis
+          </h2>
+          <div className="space-y-4 max-h-[800px] overflow-y-auto pr-2">
+            {summaries.map((summary) => (
+              <div key={summary.id} className="border border-gray-100 rounded-lg p-4 hover:border-gray-200 transition-colors bg-gray-50/50">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-800 line-clamp-1">{summary.title || 'Untitled'}</h3>
+                    <div className="text-sm text-gray-500 mt-1">
+                      Summary ID: {summary.id} • Method: {summary.method} • {new Date(summary.created_at).toLocaleString()}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => analyzeSummary(summary.id)}
+                    disabled={analyzingId === summary.id}
+                    className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 text-sm font-medium flex items-center gap-2 whitespace-nowrap"
+                  >
+                    {analyzingId === summary.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
+                    {analysisData[summary.id] ? 'Refresh Insights' : 'Analyze Insights'}
+                  </button>
+                </div>
+                
+                <AnimatePresence>
+                  {analysisData[summary.id] && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-4"
+                    >
+                      {/* Fake News Report */}
+                      <div className="bg-orange-50/80 rounded-xl p-5 border border-orange-100">
+                        <h4 className="font-bold text-orange-800 mb-3 flex items-center gap-2">
+                          <AlertTriangle className="w-5 h-5" /> Fake News Analysis
+                        </h4>
+                        <div className="mb-3 flex items-center gap-2">
+                          <span className="font-semibold text-orange-900">Verdict:</span> 
+                          <span className={`px-2 py-1 rounded text-sm font-bold ${analysisData[summary.id].fake_news.score >= 80 ? 'bg-green-100 text-green-700' : analysisData[summary.id].fake_news.score >= 60 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                            {analysisData[summary.id].fake_news.verdict} ({analysisData[summary.id].fake_news.score}%)
+                          </span>
+                        </div>
+                        <div className="text-sm text-orange-900 border-l-2 border-orange-300 pl-3 italic mb-3">
+                          "{analysisData[summary.id].fake_news.ai_reasoning}"
+                        </div>
+                        <div className="text-xs text-orange-700 font-medium">Detection Indicators:</div>
+                        <ul className="list-disc list-inside text-xs text-orange-800 mt-1">
+                          {analysisData[summary.id].fake_news.reasons.slice(0, 3).map((r, idx) => (
+                            <li key={idx} className="line-clamp-1">{r}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      
+                      {/* Sentiment Report */}
+                      <div className="bg-purple-50/80 rounded-xl p-5 border border-purple-100">
+                        <h4 className="font-bold text-purple-800 mb-3 flex items-center gap-2">
+                          <TrendingUp className="w-5 h-5" /> Sentiment Analysis
+                        </h4>
+                        <div className="mb-3 flex items-center gap-2">
+                          <span className="font-semibold text-purple-900">Overall:</span> 
+                          <span className="px-2 py-1 bg-white rounded text-sm font-bold text-purple-700 capitalize shadow-sm">
+                            {analysisData[summary.id].sentiment.sentiment} ({analysisData[summary.id].sentiment.confidence}%)
+                          </span>
+                        </div>
+                        <div className="text-xs text-purple-700 font-medium mb-2">Dominant Emotions:</div>
+                        <div className="flex flex-wrap gap-2">
+                          {analysisData[summary.id].sentiment.emotions.slice(0, 3).map((emo: any, idx: number) => (
+                            <div key={idx} className="flex items-center gap-1 bg-white px-2 py-1.5 rounded shadow-sm">
+                              <span className="text-xs font-semibold text-purple-800">{emo.name}</span>
+                              <div className="w-12 h-1.5 bg-purple-100 rounded-full overflow-hidden ml-1">
+                                <div className="h-full bg-purple-500" style={{ width: `${emo.value}%` }} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ))}
+            {summaries.length === 0 && (
+              <div className="text-center text-gray-500 py-8">No content to moderate yet.</div>
+            )}
           </div>
         </div>
       </div>
