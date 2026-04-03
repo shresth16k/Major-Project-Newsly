@@ -1,10 +1,13 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { FileText, Shield, Heart, Newspaper, History, User, Settings, HelpCircle, Info, Mail, Lock, Volume2 } from 'lucide-react'
-import { useTranslation } from '../store/settingsStore'
+import { useTranslation, useSettingsStore } from '../store/settingsStore'
+import { useAuthStore } from '../store/authStore'
 
 const More = () => {
   const t = useTranslation()
+  const darkMode = useSettingsStore(state => state.darkMode)
+  const isAuthenticated = useAuthStore(state => state.isAuthenticated)
   
   const menuItems = [
     { icon: FileText, label: t.summarizer, path: '/summarize', color: 'bg-blue-500' },
@@ -13,7 +16,7 @@ const More = () => {
     { icon: Newspaper, label: t.dailyBriefing, path: '/briefing', color: 'bg-green-500' },
     { icon: Volume2, label: t.textToSpeech, path: '/tts', color: 'bg-orange-500' },
     { icon: History, label: t.history, path: '/history', color: 'bg-indigo-500' },
-    { icon: User, label: t.profile, path: '/login', color: 'bg-pink-500' },
+    { icon: User, label: t.profile, path: isAuthenticated ? '/profile' : '/login', color: 'bg-pink-500' },
     { icon: Settings, label: t.settings, path: '/settings', color: 'bg-gray-500' },
     { icon: Info, label: t.about, path: '/about', color: 'bg-cyan-500' },
     { icon: Mail, label: t.contact, path: '/contact', color: 'bg-teal-500' },
@@ -27,7 +30,7 @@ const More = () => {
         <motion.h1
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-2xl font-bold text-gray-800 mb-6"
+          className={`text-2xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-800'}`}
         >
           {t.moreOptions}
         </motion.h1>
@@ -42,12 +45,12 @@ const More = () => {
             >
               <Link
                 to={item.path}
-                className="flex flex-col items-center p-4 bg-white rounded-2xl shadow-md hover:shadow-lg transition"
+                className={`flex flex-col items-center p-4 rounded-2xl shadow-md hover:shadow-lg transition ${darkMode ? 'bg-slate-800 border border-slate-700' : 'bg-white'}`}
               >
                 <div className={`w-12 h-12 ${item.color} rounded-xl flex items-center justify-center mb-2`}>
                   <item.icon className="w-6 h-6 text-white" />
                 </div>
-                <span className="text-xs text-gray-600 text-center">{item.label}</span>
+                <span className={`text-xs text-center ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{item.label}</span>
               </Link>
             </motion.div>
           ))}

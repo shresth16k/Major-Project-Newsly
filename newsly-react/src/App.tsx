@@ -23,6 +23,7 @@ import More from './pages/More'
 import ForgotPassword from './pages/ForgotPassword'
 import TextToSpeech from './pages/TextToSpeech'
 import Settings from './pages/Settings'
+import Profile from './pages/Profile'
 import SavedPosts from './pages/SavedPosts'
 import AdminDashboard from './pages/admin/Dashboard'
 import Articles from './pages/admin/Articles'
@@ -70,6 +71,7 @@ function App() {
           <Route path="forgot-password" element={<ForgotPassword />} />
           <Route path="tts" element={<TextToSpeech />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="saved" element={<SavedPosts />} />
         </Route>
         <Route path="/admin" element={

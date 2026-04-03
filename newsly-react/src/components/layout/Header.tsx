@@ -149,10 +149,10 @@ const Header = () => {
             </Link>
             {isAuthenticated ? (
               <div className="flex items-center gap-3">
-                <div className={`flex items-center gap-2 px-4 py-2 ${darkMode ? 'bg-slate-700' : 'bg-gray-100'} rounded-full`}>
+                <Link to="/profile" className={`flex items-center gap-2 px-4 py-2 ${darkMode ? 'bg-slate-700 hover:bg-slate-600' : 'bg-gray-100 hover:bg-gray-200'} rounded-full transition-colors`}>
                   <User className={`w-4 h-4 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                   <span className={`text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>{user?.email?.split('@')[0]}</span>
-                </div>
+                </Link>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -226,12 +226,12 @@ const Header = () => {
               >
                 {isAuthenticated ? (
                   <div className="space-y-2">
-                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${darkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
+                    <Link to="/profile" className={`flex items-center gap-2 px-3 py-2 rounded-lg ${darkMode ? 'bg-slate-800 hover:bg-slate-700' : 'bg-gray-50 hover:bg-gray-100'} transition-colors`}>
                       <User className={`w-4 h-4 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                       <span className={`text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
                         {user?.email?.split('@')[0]}
                       </span>
-                    </div>
+                    </Link>
                     <button
                       onClick={() => { logout(); navigate('/') }}
                       className="w-full flex items-center gap-2 px-3 py-2.5 bg-red-50 text-red-600 rounded-lg font-medium text-sm hover:bg-red-100 transition-colors"
