@@ -12,10 +12,24 @@ const Contact = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    toast.success('Message sent successfully!')
-    setForm({ name: '', email: '', message: '' })
-    setLoading(false)
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form)
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        toast.success('Message sent successfully!')
+        setForm({ name: '', email: '', message: '' })
+      } else {
+        toast.error(data.error || 'Failed to send message')
+      }
+    } catch (error) {
+      toast.error('Network error. Failed to send message.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

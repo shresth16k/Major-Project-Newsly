@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, ChevronDown, Shield, Heart, Volume2, User, LogOut } from 'lucide-react'
+import { Menu, X, ChevronDown, Shield, Heart, Volume2, User, LogOut, Bookmark, FileText } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { useTranslation, useSettingsStore } from '../../store/settingsStore'
 
@@ -40,6 +40,7 @@ const Header = () => {
     { label: t.fakeNewsDetector, path: '/verify', icon: Shield },
     { label: t.emotionAnalyzer, path: '/sentiment', icon: Heart },
     { label: t.textToSpeech, path: '/tts', icon: Volume2 },
+    { label: t.summarize, path: '/summarize', icon: FileText },
   ]
 
   return (
@@ -139,6 +140,13 @@ const Header = () => {
           </nav>
 
           <div className="hidden lg:flex items-center gap-4">
+            <Link 
+              to="/saved" 
+              className={`p-2 rounded-full ${darkMode ? 'text-gray-300 hover:bg-slate-700' : 'text-gray-600 hover:bg-gray-100'} transition-colors`}
+              title={t.savedPosts || 'Saved Posts'}
+            >
+              <Bookmark className="w-5 h-5" />
+            </Link>
             {isAuthenticated ? (
               <div className="flex items-center gap-3">
                 <div className={`flex items-center gap-2 px-4 py-2 ${darkMode ? 'bg-slate-700' : 'bg-gray-100'} rounded-full`}>
@@ -190,6 +198,7 @@ const Header = () => {
                 { label: t.home, path: '/' },
                 { label: t.about, path: '/about' },
                 { label: t.categories, path: '/categories' },
+                { label: t.savedPosts || 'Saved Posts', path: '/saved' },
                 { label: t.fakeNewsDetector, path: '/verify' },
                 { label: t.emotionAnalyzer, path: '/sentiment' },
                 { label: t.textToSpeech, path: '/tts' },

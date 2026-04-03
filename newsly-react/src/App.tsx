@@ -23,11 +23,13 @@ import More from './pages/More'
 import ForgotPassword from './pages/ForgotPassword'
 import TextToSpeech from './pages/TextToSpeech'
 import Settings from './pages/Settings'
+import SavedPosts from './pages/SavedPosts'
 import AdminDashboard from './pages/admin/Dashboard'
 import Articles from './pages/admin/Articles'
 import Users from './pages/admin/Users'
 import Analytics from './pages/admin/Analytics'
 import AdminSettings from './pages/admin/Settings'
+import ContactMessages from './pages/admin/ContactMessages'
 import { useSettingsStore } from './store/settingsStore'
 
 function App() {
@@ -68,6 +70,7 @@ function App() {
           <Route path="forgot-password" element={<ForgotPassword />} />
           <Route path="tts" element={<TextToSpeech />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="saved" element={<SavedPosts />} />
         </Route>
         <Route path="/admin" element={
           <ProtectedRoute requireAdmin={true}>
@@ -78,6 +81,7 @@ function App() {
           <Route path="articles" element={<Articles />} />
           <Route path="users" element={<Users />} />
           <Route path="analytics" element={<Analytics />} />
+          <Route path="contacts" element={<ContactMessages />} />
           <Route path="settings" element={<AdminSettings />} />
         </Route>
       </Routes>

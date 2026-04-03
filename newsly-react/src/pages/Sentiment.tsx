@@ -8,6 +8,7 @@ interface SentimentResult {
   sentiment: 'positive' | 'neutral' | 'negative'
   confidence: number
   emotions: { name: string; value: number }[]
+  ai_reasoning?: string
 }
 
 const Sentiment = () => {
@@ -193,30 +194,34 @@ const Sentiment = () => {
                 </motion.div>
 
                 {/* Emotion Breakdown */}
-                <h3 className="font-semibold text-gray-800 mb-4 text-lg">Emotion Breakdown</h3>
-                <div className="space-y-4">
-                  {result.emotions.map((emotion, i) => (
-                    <motion.div
-                      key={emotion.name}
-                      initial={{ opacity: 0, x: -30 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.2 + i * 0.1 }}
-                    >
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="font-medium text-gray-700">{emotion.name}</span>
-                        <span className="text-gray-500">{emotion.value}%</span>
-                      </div>
-                      <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
+                {result.emotions && result.emotions.length > 0 && (
+                  <>
+                    <h3 className="font-semibold text-gray-800 mb-4 text-lg">Emotion Breakdown</h3>
+                    <div className="space-y-4">
+                      {result.emotions.map((emotion, i) => (
                         <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${emotion.value}%` }}
-                          transition={{ duration: 0.6, delay: 0.3 + i * 0.1 }}
-                          className={`h-full bg-gradient-to-r ${getEmotionColor(emotion.name)} rounded-full`}
-                        />
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
+                          key={emotion.name}
+                          initial={{ opacity: 0, x: -30 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.2 + i * 0.1 }}
+                        >
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="font-medium text-gray-700">{emotion.name}</span>
+                            <span className="text-gray-500">{emotion.value}%</span>
+                          </div>
+                          <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${emotion.value}%` }}
+                              transition={{ duration: 0.6, delay: 0.3 + i * 0.1 }}
+                              className={`h-full bg-gradient-to-r ${getEmotionColor(emotion.name)} rounded-full`}
+                            />
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </>
+                )}
 
                 {/* Emotion Summary */}
                 <motion.div
@@ -226,9 +231,18 @@ const Sentiment = () => {
                   className="mt-6 p-4 bg-purple-50 rounded-xl"
                 >
                   <p className="text-purple-800 text-sm">
-                    <strong>Analysis Summary:</strong> This text has a predominantly{' '}
-                    <span className="font-semibold">{result.sentiment}</span> tone with{' '}
-                    <span className="font-semibold">{result.emotions[0]?.name}</span> being the dominant emotion.
+                    <strong>Storyteller Analysis:</strong>{' '}
+                    {result.ai_reasoning ? (
+                      result.ai_reasoning
+                    ) : (
+                      <>
+                        This text has a predominantly <span className="font-semibold">{result.sentiment}</span> tone
+                        {result.emotions && result.emotions.length > 0 && (
+                          <> with <span className="font-semibold">{result.emotions[0]?.name}</span> being the dominant emotion.</>
+                        )}
+                        {!result.emotions && '.'}
+                      </>
+                    )}
                   </p>
                 </motion.div>
               </motion.div>

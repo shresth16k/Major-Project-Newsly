@@ -85,6 +85,13 @@ class SentimentLog(db.Model):
     confidence = db.Column(db.Integer)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class ContactMessage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(200), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 with app.app_context():
     db.create_all()
     if not User.query.filter_by(email='admin@newsly.local').first():
@@ -283,6 +290,26 @@ def api_signup():
 def api_logout():
     session.clear()
     return jsonify({'success': True})
+
+@app.route('/api/contact', methods=['POST'])
+def api_contact():
+    data = request.get_json()
+    name = data.get('name', '').strip()
+    email = data.get('email', '').strip()
+    message = data.get('message', '').strip()
+
+    if not name or not email or not message:
+        return jsonify({'error': 'Name, email, and message are required'}), 400
+
+    try:
+        msg = ContactMessage(name=name, email=email, message=message)
+        db.session.add(msg)
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        logger.exception("Failed to save contact message: %s", e)
+        return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/api/summarize', methods=['POST'])
 def api_summarize():
@@ -627,73 +654,205 @@ def api_sentiment():
 
 def analyze_sentiment(text):
     import re
+    from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
     
-    text_lower = text.lower()
-    words = re.findall(r'\w+', text_lower)
+    # 1. Base Polarity / Sentiment (Vader is extremely accurate for the primary metric)
+    analyzer = SentimentIntensityAnalyzer()
+    vs = analyzer.polarity_scores(text)
     
-    # Emotion word lists
-    positive_words = ['good', 'great', 'excellent', 'amazing', 'wonderful', 'fantastic', 
-                      'happy', 'joy', 'love', 'best', 'beautiful', 'success', 'win',
-                      'hope', 'excited', 'brilliant', 'perfect', 'awesome', 'positive',
-                      'improve', 'growth', 'benefit', 'advantage', 'progress', 'achieve']
-    
-    negative_words = ['bad', 'terrible', 'awful', 'horrible', 'worst', 'hate', 'sad',
-                      'angry', 'fear', 'fail', 'loss', 'problem', 'crisis', 'danger',
-                      'threat', 'risk', 'concern', 'worry', 'decline', 'damage', 'harm',
-                      'death', 'kill', 'destroy', 'attack', 'war', 'conflict']
-    
-    trust_words = ['trust', 'reliable', 'honest', 'authentic', 'verified', 'confirmed',
-                   'official', 'legitimate', 'credible', 'proven', 'fact', 'evidence']
-    
-    fear_words = ['fear', 'afraid', 'scared', 'terror', 'panic', 'alarm', 'threat',
-                  'danger', 'risk', 'warning', 'emergency', 'crisis']
-    
-    surprise_words = ['surprise', 'unexpected', 'shocking', 'sudden', 'breaking',
-                      'unprecedented', 'remarkable', 'astonishing', 'stunning']
-    
-    anger_words = ['angry', 'furious', 'outrage', 'rage', 'hate', 'attack', 'blame',
-                   'condemn', 'criticize', 'accuse', 'protest', 'demand']
-    
-    # Count emotions
-    word_set = set(words)
-    
-    joy_score = sum(1 for w in positive_words if w in word_set) * 10
-    sadness_score = sum(1 for w in negative_words if w in word_set) * 8
-    trust_score = sum(1 for w in trust_words if w in word_set) * 12
-    fear_score = sum(1 for w in fear_words if w in word_set) * 10
-    surprise_score = sum(1 for w in surprise_words if w in word_set) * 8
-    anger_score = sum(1 for w in anger_words if w in word_set) * 10
-    
-    # Normalize scores (0-100)
-    max_possible = max(len(words) * 0.3, 1)
-    emotions = {
-        'Joy': min(100, int(joy_score / max_possible * 100) + 20),
-        'Trust': min(100, int(trust_score / max_possible * 100) + 15),
-        'Fear': min(100, int(fear_score / max_possible * 100) + 10),
-        'Surprise': min(100, int(surprise_score / max_possible * 100) + 10),
-        'Sadness': min(100, int(sadness_score / max_possible * 100) + 10),
-        'Anger': min(100, int(anger_score / max_possible * 100) + 5),
-    }
-    
-    # Determine overall sentiment
-    positive_total = joy_score + trust_score
-    negative_total = sadness_score + fear_score + anger_score
-    
-    if positive_total > negative_total * 1.5:
+    compound = vs['compound']
+    if compound >= 0.05:
         sentiment = 'positive'
-        confidence = min(95, 60 + positive_total)
-    elif negative_total > positive_total * 1.5:
+        confidence = int(50 + ((compound - 0.05) / 0.95) * 50)
+    elif compound <= -0.05:
         sentiment = 'negative'
-        confidence = min(95, 60 + negative_total)
+        confidence = int(50 + ((abs(compound) - 0.05) / 0.95) * 50)
     else:
         sentiment = 'neutral'
-        confidence = min(90, 70 + abs(positive_total - negative_total))
+        confidence = int(100 - (abs(compound) / 0.05) * 50)
+        
+    # 2. Extract Specific Human Emotions using custom dictionaries to avoid NRCLex crashes
+    text_lower = text.lower()
+    words = set(re.findall(r'\w+', text_lower))
+    
+    emotion_bags = {
+        'Joy': {'happy', 'joy', 'love', 'best', 'beautiful', 'success', 'win', 'hope', 'excited', 'brilliant', 'perfect', 'awesome', 'good', 'great', 'excellent', 'amazing', 'wonderful', 'fantastic', 'glad', 'cheerful', 'delight', 'blessed', 'proud'},
+        'Trust': {'trust', 'reliable', 'honest', 'authentic', 'verified', 'confirmed', 'official', 'legitimate', 'credible', 'proven', 'fact', 'evidence', 'faith', 'secure', 'safe', 'genuine', 'dependable', 'guarantee'},
+        'Fear': {'fear', 'afraid', 'scared', 'terror', 'panic', 'alarm', 'threat', 'danger', 'risk', 'warning', 'emergency', 'crisis', 'anxious', 'worried', 'dread', 'nervous', 'terrified', 'horrifying'},
+        'Surprise': {'surprise', 'unexpected', 'shocking', 'sudden', 'breaking', 'unprecedented', 'remarkable', 'astonishing', 'stunning', 'wow', 'incredible', 'unbelievable', 'startling', 'miracle'},
+        'Sadness': {'sad', 'depressed', 'crying', 'tear', 'grief', 'sorrow', 'heartbreak', 'upset', 'unhappy', 'loss', 'tragedy', 'mourn', 'pain', 'hurting', 'miserable', 'devastating'},
+        'Anger': {'angry', 'furious', 'outrage', 'rage', 'hate', 'attack', 'blame', 'condemn', 'criticize', 'accuse', 'protest', 'demand', 'mad', 'frustrated', 'annoyed', 'disgust', 'bitter'}
+    }
+    
+    raw_scores = {}
+    for emo, bag in emotion_bags.items():
+        # Count how many words in the text intersect with the emotion bag
+        raw_scores[emo] = len(words.intersection(bag))
+        
+    emotion_weights = {}
+    for emo in emotion_bags.keys():
+        emotion_weights[emo] = raw_scores.get(emo, 0)
+        
+    # Add sentiment-based boosting so emotions align sensibly with the primary sentiment
+    if sentiment == 'positive':
+        emotion_weights['Joy'] += 0.5
+        emotion_weights['Trust'] += 0.5
+    elif sentiment == 'negative':
+        emotion_weights['Anger'] += 0.4
+        emotion_weights['Sadness'] += 0.4
+        emotion_weights['Fear'] += 0.4
+    else:
+        emotion_weights['Trust'] += 0.5
+        emotion_weights['Surprise'] += 0.5
+
+    # Give everything a small baseline so it's not totally 0
+    for emo in emotion_bags.keys():
+        emotion_weights[emo] += 0.1
+        
+    total_weight = sum(emotion_weights.values())
+    
+    emotion_objs = []
+    current_sum = 0
+    
+    # Distribute the exact 'confidence' value across the emotion percentages
+    for emo, weight in emotion_weights.items():
+        val = int(round((weight / total_weight) * confidence))
+        emotion_objs.append({
+            'name': emo,
+            'value': val
+        })
+        current_sum += val
+        
+    # Fix any rounding errors to ensure the sum is exactly equal to 'confidence'
+    diff = confidence - current_sum
+    if diff != 0:
+        emotion_objs.sort(key=lambda x: x['value'], reverse=True)
+        emotion_objs[0]['value'] += diff
+        
+    # Sort emotions so highest is first
+    emotion_objs.sort(key=lambda x: x['value'], reverse=True)
+    top_emotions = [e['name'] for e in emotion_objs[:2]]
+    
+    # 3. Analyze Subjectivity (TextBlob)
+    subjectivity_desc = "an objective, factual approach"
+    try:
+        from textblob import TextBlob
+        tb = TextBlob(text)
+        sub_score = tb.sentiment.subjectivity
+        if sub_score > 0.65:
+            subjectivity_desc = "a highly subjective, opinion-driven approach"
+        elif sub_score > 0.35:
+            subjectivity_desc = "a moderately balanced approach blending facts with personal perspective"
+        else:
+            subjectivity_desc = "an objective, factual approach"
+    except Exception:
+        pass
+        
+    # 4. Synthesize Storyteller Intent
+    short_summary = ""
+    try:
+        if len(text.split()) > 25:
+            summ_tuple = summarize_text_auto(text, length='short')
+            short_summary = summ_tuple[0]
+            if not short_summary:
+                short_summary = " ".join(text.split()[:25]) + "..."
+        else:
+            short_summary = text.strip()
+    except Exception:
+        short_summary = text.strip() if len(text.split()) <= 25 else " ".join(text.split()[:25]) + "..."
+
+    # Formulate Reasoning Paragraph
+    intent_part = f"The storyteller is trying to convey the following core message: '{short_summary}'. "
+    
+    emotion_part = ""
+    if sentiment == 'positive':
+        emotion_part = f"To explain this, they use {subjectivity_desc}, predominantly radiating emotions associated with {top_emotions[0]} and {top_emotions[1]}. This suggests an uplifting, optimistic tone meant to inspire or reassure the audience."
+    elif sentiment == 'negative':
+        emotion_part = f"To explain this, they use {subjectivity_desc}, heavily relying on emotions related to {top_emotions[0]} and {top_emotions[1]}. This reflects an underlying tension, warning, or critical perspective geared toward urging caution or expressing distress."
+    else:
+        emotion_part = f"To explain this, they use {subjectivity_desc}. They maintain a fairly neutral stance, balancing mild {top_emotions[0]} and {top_emotions[1]} without leaning into extreme emotional manipulation."
+        
+    ai_reasoning = f"{intent_part} {emotion_part}"
     
     return {
         'sentiment': sentiment,
         'confidence': confidence,
-        'emotions': [{'name': k, 'value': v} for k, v in emotions.items()]
+        'emotions': emotion_objs,
+        'ai_reasoning': ai_reasoning
     }
+
+# ============ LATEST LIVE NEWS API ============
+@app.route('/api/news/latest')
+def api_latest_news():
+    import urllib.parse
+    category = request.args.get('category', '').strip()
+    
+    if category and category.lower() != 'all':
+        query = f"latest {category} news"
+    else:
+        query = "latest news"
+        
+    encoded_query = urllib.parse.quote(query)
+    rss_url = f"https://news.google.com/rss/search?q={encoded_query}&hl=en-US&gl=US&ceid=US:en"
+    
+    try:
+        import requests
+        import xml.etree.ElementTree as ET
+        import random
+        from datetime import datetime
+        import re
+        
+        r = requests.get(rss_url, timeout=10)
+        root = ET.fromstring(r.text)
+        items = root.findall('.//item')
+        
+        # Take up to 12 items
+        items = items[:12]
+        
+        formatted_news = []
+        for i, item in enumerate(items):
+            title = item.find('title').text if item.find('title') is not None else 'Unknown News'
+            link = item.find('link').text if item.find('link') is not None else ''
+            
+            # The source is often heavily nested in <source> tag or implied. We use the raw tag if available.
+            source_tag = item.find('source')
+            source = source_tag.text if source_tag is not None else 'Web Search'
+            
+            pub_date = item.find('pubDate').text if item.find('pubDate') is not None else datetime.utcnow().strftime('%Y-%m-%d')
+            description = item.find('description').text if item.find('description') is not None else ''
+            
+            # Simple body extraction by stripping html tags
+            body = re.sub('<[^<]+>', '', description) if description else title
+            
+            # Generic related image based on category
+            category_seed = category.replace(' ', '') if category and category.lower() != 'all' else 'news'
+            image_url = f"https://picsum.photos/seed/{category_seed}{i}/800/600"
+            
+            score = random.randint(85, 99)
+            sentiment_choices = ['Positive', 'Neutral', 'Negative']
+            sentiment = random.choices(sentiment_choices, weights=[0.4, 0.4, 0.2])[0]
+            read_time = f"{max(2, min(8, len(body) // 100))} min"
+            
+            formatted_news.append({
+                'id': f"live_{i}_{random.randint(1000, 9999)}",
+                'title': title,
+                'summary': body[:180] + '...' if len(body) > 180 else body,
+                'content': body + "\n\n(To read the full detailed article, please visit the source URL directly or share it.)",
+                'trustScore': score,
+                'sentiment': sentiment,
+                'readTime': read_time,
+                'source': source,
+                'author': 'Staff Reporter',
+                'date': pub_date[:16] if pub_date else datetime.utcnow().strftime('%Y-%m-%d'),
+                'image': image_url,
+                'url': link
+            })
+            
+        return jsonify({'news': formatted_news})
+        
+    except Exception as e:
+        logger.exception(f"Failed to fetch live news: {e}")
+        return jsonify({'error': 'Failed to fetch live news', 'news': []}), 500
 
 # ============ DAILY BRIEFING API ============
 @app.route('/api/briefing')
@@ -790,6 +949,20 @@ def api_briefing():
     })
 
 # ============ ADMIN API ENDPOINTS ============
+@app.route('/api/admin/contacts', methods=['GET'])
+@admin_required
+def api_admin_contacts():
+    messages = ContactMessage.query.order_by(ContactMessage.created_at.desc()).all()
+    return jsonify({
+        'contacts': [{
+            'id': m.id,
+            'name': m.name,
+            'email': m.email,
+            'message': m.message,
+            'created_at': m.created_at.isoformat() if m.created_at else None
+        } for m in messages]
+    })
+
 @app.route('/api/admin/users', methods=['GET'])
 @login_required
 def api_admin_users():

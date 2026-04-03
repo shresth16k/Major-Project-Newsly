@@ -70,6 +70,8 @@ export const translations = {
     history: 'History',
     settings: 'Settings',
     more: 'More',
+    savedPosts: 'Saved Posts',
+    savedPostsDesc: 'View your saved news articles',
     
     // Home Page
     heroTitle: 'Newsly: The AI News',
@@ -362,6 +364,8 @@ export const translations = {
     history: 'इतिहास',
     settings: 'सेटिंग्स',
     more: 'और देखें',
+    savedPosts: 'सहेजे गए पोस्ट',
+    savedPostsDesc: 'अपने सहेजे गए समाचार लेख देखें',
     
     // Home Page
     heroTitle: 'Newsly: AI समाचार',

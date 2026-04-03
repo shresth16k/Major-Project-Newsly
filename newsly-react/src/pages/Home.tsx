@@ -1,8 +1,9 @@
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FileText, Shield, Heart, Newspaper, ArrowRight, Sparkles, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { FileText, Shield, Heart, Newspaper, ArrowRight, Sparkles, X, ChevronLeft, ChevronRight, Bookmark, Trash2, Share2 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from '../store/settingsStore'
+import { useNewsStore, type NewsItem } from '../store/newsStore'
 
 const Home = () => {
   const navigate = useNavigate()
@@ -517,33 +518,46 @@ const ToolsGrid = ({ navigate }: { navigate: (path: string) => void }) => {
   )
 }
 
-const trendingStories = [
-  { id: 1, image: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&h=600&fit=crop', headline: 'AI Breakthrough in Climate Research Shows Promise', summary: 'Scientists have developed a new AI model that can predict climate patterns with unprecedented accuracy, potentially revolutionizing how we prepare for extreme weather events.', trustScore: 98, sentiment: 'Positive', source: 'Tech Daily', author: 'Dr. Sarah Chen', date: 'Jan 9, 2026', readTime: '4 min' },
-  { id: 2, image: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&h=600&fit=crop', headline: 'Global Markets React to New Economic Policies', summary: 'Stock markets worldwide showed mixed reactions to the latest economic policy announcements, with tech stocks leading gains while traditional sectors remained cautious.', trustScore: 94, sentiment: 'Neutral', source: 'Financial Times', author: 'Michael Roberts', date: 'Jan 9, 2026', readTime: '3 min' },
-  { id: 3, image: 'https://images.unsplash.com/photo-1530497610245-94d3c16cda28?w=800&h=600&fit=crop', headline: 'Healthcare Innovation Reduces Treatment Costs', summary: 'A groundbreaking new treatment approach has shown to reduce healthcare costs by up to 40% while improving patient outcomes significantly.', trustScore: 96, sentiment: 'Positive', source: 'Health News', author: 'Dr. Emily Watson', date: 'Jan 8, 2026', readTime: '5 min' },
-  { id: 4, image: 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=800&h=600&fit=crop', headline: 'Space Exploration Mission Achieves New Milestone', summary: 'The latest space mission has successfully completed its primary objectives, marking a significant step forward in our understanding of the solar system.', trustScore: 99, sentiment: 'Neutral', source: 'Space Today', author: 'James Miller', date: 'Jan 8, 2026', readTime: '6 min' },
-  { id: 5, image: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800&h=600&fit=crop', headline: 'Robotics Industry Sees Record Growth', summary: 'The robotics sector has experienced unprecedented growth this quarter, with automation solutions being adopted across multiple industries at an accelerating pace.', trustScore: 95, sentiment: 'Positive', source: 'Tech Weekly', author: 'Anna Lee', date: 'Jan 7, 2026', readTime: '4 min' },
-  { id: 6, image: 'https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=800&h=600&fit=crop', headline: 'Startup Funding Reaches All-Time High', summary: 'Venture capital investments in startups have reached record levels, with AI and clean energy companies attracting the majority of funding.', trustScore: 93, sentiment: 'Positive', source: 'Business Insider', author: 'David Park', date: 'Jan 7, 2026', readTime: '3 min' },
-]
-
 const TrendingPicks = () => {
-  const [selectedStory, setSelectedStory] = useState<typeof trendingStories[0] | null>(null)
+  const [trendingStories, setTrendingStories] = useState<NewsItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedStory, setSelectedStory] = useState<NewsItem | null>(null)
+  
   const scrollRef = useRef<HTMLDivElement>(null)
   const [isPaused, setIsPaused] = useState(false)
   const scrollDirectionRef = useRef(1)
+  
   const t = useTranslation()
+  const { isSaved, savePost, removePost } = useNewsStore()
 
-  // Auto-scroll with setInterval - simpler and more reliable
+  useEffect(() => {
+    const fetchLatestNews = async () => {
+      try {
+        setLoading(true)
+        const res = await fetch('http://localhost:5000/api/news/latest')
+        if (res.ok) {
+          const data = await res.json()
+          setTrendingStories(data.news || [])
+        }
+      } catch (err) {
+        console.error('Error fetching live news:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchLatestNews()
+  }, [])
+
+  // Auto-scroll logic
   useEffect(() => {
     const container = scrollRef.current
-    if (!container) return
+    if (!container || trendingStories.length === 0) return
 
     const interval = setInterval(() => {
       if (isPaused || !container) return
       
       const maxScroll = container.scrollWidth - container.clientWidth
       
-      // Reverse at edges
       if (container.scrollLeft >= maxScroll - 5) {
         scrollDirectionRef.current = -1
       } else if (container.scrollLeft <= 5) {
@@ -554,17 +568,37 @@ const TrendingPicks = () => {
     }, 30)
 
     return () => clearInterval(interval)
-  }, [isPaused])
+  }, [isPaused, trendingStories])
 
-  // Manual scroll function
   const scrollTo = (direction: 'left' | 'right') => {
     const container = scrollRef.current
     if (!container) return
     setIsPaused(true)
     const amount = direction === 'left' ? -350 : 350
     container.scrollBy({ left: amount, behavior: 'smooth' })
-    // Resume after scroll completes
     setTimeout(() => setIsPaused(false), 1000)
+  }
+
+  const handleShare = async (news: NewsItem) => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: news.title,
+          text: news.summary,
+          url: news.url || window.location.href,
+        })
+      } catch (err) {
+        console.error('Error sharing', err)
+      }
+    } else {
+      navigator.clipboard.writeText(news.url || window.location.href)
+      alert('Link copied to clipboard')
+    }
+  }
+
+  const handleToggleSave = (news: NewsItem) => {
+    if (isSaved(news.id)) removePost(news.id)
+    else savePost(news)
   }
 
   return (
@@ -574,7 +608,7 @@ const TrendingPicks = () => {
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="flex items-center justify-between mb-12"
+          className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-12 gap-4"
         >
           <div className="flex items-center gap-3">
             <motion.div animate={{ rotate: 360 }} transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}>
@@ -585,7 +619,6 @@ const TrendingPicks = () => {
             </h2>
           </div>
           
-          {/* Scroll Buttons */}
           <div className="hidden sm:flex gap-2">
             <button
               onClick={() => scrollTo('left')}
@@ -602,60 +635,79 @@ const TrendingPicks = () => {
           </div>
         </motion.div>
         
-        {/* Horizontal Scroll Container */}
         <div 
-          className="relative"
+          className="relative min-h-[300px]"
           onMouseEnter={() => setIsPaused(true)}
           onMouseLeave={() => setIsPaused(false)}
         >
-          <div 
-            ref={scrollRef}
-            className="flex gap-6 overflow-x-auto pb-6"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-          >
-            {trendingStories.map((story, i) => (
-              <motion.div
-                key={story.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                whileHover={{ y: -8, boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
-                onClick={() => setSelectedStory(story)}
-                className="flex-shrink-0 w-80 bg-white rounded-2xl shadow-lg overflow-hidden cursor-pointer border border-gray-100 group"
-              >
-                <div className="h-48 relative overflow-hidden bg-gray-200">
-                  <img 
-                    src={story.image} 
-                    alt={story.headline}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&h=600&fit=crop' }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                  <div className="absolute bottom-3 left-3 right-3 flex gap-2">
-                    <span className="px-2 py-1 bg-green-500 text-white text-xs font-bold rounded-full">
-                      {story.trustScore}% Trust
-                    </span>
-                    <span className={`px-2 py-1 text-xs font-bold rounded-full ${story.sentiment === 'Positive' ? 'bg-blue-500 text-white' : 'bg-gray-500 text-white'}`}>
-                      {story.sentiment}
-                    </span>
+          {loading ? (
+             <div className="flex justify-center items-center h-48">
+               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+             </div>
+          ) : trendingStories.length === 0 ? (
+             <div className="text-gray-500 text-center py-12">No recent news available at the moment.</div>
+          ) : (
+            <div 
+              ref={scrollRef}
+              className="flex gap-6 overflow-x-auto pb-6"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              {trendingStories.map((story, i) => (
+                <motion.div
+                  key={story.id}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  whileHover={{ y: -8, boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
+                  onClick={() => setSelectedStory(story)}
+                  className="flex-shrink-0 w-80 bg-white rounded-2xl shadow-lg overflow-hidden cursor-pointer border border-gray-100 group flex flex-col"
+                >
+                  <div className="h-48 relative overflow-hidden bg-gray-200">
+                    <img 
+                      src={story.image} 
+                      alt={story.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&h=600&fit=crop' }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                    
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleSave(story);
+                      }}
+                      className="absolute top-3 right-3 p-2 bg-black/40 backdrop-blur-md rounded-full hover:bg-black/60 transition-colors text-white z-10"
+                    >
+                      {isSaved(story.id) ? <Bookmark className="w-4 h-4 fill-white" /> : <Bookmark className="w-4 h-4" />}
+                    </button>
+
+                    <div className="absolute bottom-3 left-3 right-3 flex gap-2">
+                      <span className="px-2 py-1 bg-green-500 text-white text-xs font-bold rounded-full">
+                        {story.trustScore}% Trust
+                      </span>
+                      <span className={`px-2 py-1 text-xs font-bold rounded-full ${story.sentiment === 'Positive' ? 'bg-blue-500 text-white' : story.sentiment === 'Negative' ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'}`}>
+                        {story.sentiment}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                <div className="p-5">
-                  <h3 className="font-semibold text-lg mb-2 line-clamp-2 group-hover:text-primary-500 transition-colors">{story.headline}</h3>
-                  <p className="text-sm text-gray-500">{story.source} • {story.readTime}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                  <div className="p-5 flex-1 flex flex-col justify-between">
+                    <h3 className="font-semibold text-lg mb-3 line-clamp-2 group-hover:text-primary-500 transition-colors">{story.title}</h3>
+                    <div className="flex items-center justify-between text-sm text-gray-500 mt-auto">
+                      <span className="truncate max-w-[140px]">{story.source}</span>
+                      <span>{story.readTime}</span>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
           
-          {/* Scroll Hint Gradients */}
           <div className="absolute left-0 top-0 bottom-6 w-16 bg-gradient-to-r from-white to-transparent pointer-events-none" />
           <div className="absolute right-0 top-0 bottom-6 w-16 bg-gradient-to-l from-white to-transparent pointer-events-none" />
         </div>
       </div>
 
-      {/* Story Detail Modal */}
       <AnimatePresence>
         {selectedStory && (
           <motion.div
@@ -673,21 +725,20 @@ const TrendingPicks = () => {
               className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl my-4"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Header Image */}
               <div className="relative h-64 sticky top-0">
                 <img
                   src={selectedStory.image}
-                  alt={selectedStory.headline}
+                  alt={selectedStory.title}
                   className="w-full h-full object-cover"
+                  onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&h=600&fit=crop' }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
                 
-                {/* Clear X Close Button */}
                 <button
                   onClick={() => setSelectedStory(null)}
-                  className="absolute top-4 right-4 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-100 transition group"
+                  className="absolute top-4 right-4 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg hover:bg-white/40 transition group"
                 >
-                  <X className="w-6 h-6 text-gray-700 group-hover:text-red-500 transition" />
+                  <X className="w-5 h-5 text-white transition" />
                 </button>
                 
                 <div className="absolute bottom-0 left-0 right-0 p-6">
@@ -695,54 +746,67 @@ const TrendingPicks = () => {
                     <span className="px-3 py-1 bg-green-500 text-white text-sm font-bold rounded-full">
                       {selectedStory.trustScore}% Trust Score
                     </span>
-                    <span className={`px-3 py-1 text-sm font-bold rounded-full ${selectedStory.sentiment === 'Positive' ? 'bg-blue-500 text-white' : 'bg-gray-500 text-white'}`}>
+                    <span className={`px-3 py-1 text-sm font-bold rounded-full ${selectedStory.sentiment === 'Positive' ? 'bg-blue-500 text-white' : selectedStory.sentiment === 'Negative' ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'}`}>
                       {selectedStory.sentiment}
                     </span>
                   </div>
                   <h2 className="text-2xl font-bold text-white leading-tight">
-                    {selectedStory.headline}
+                    {selectedStory.title}
                   </h2>
                 </div>
               </div>
 
-              {/* Content - Scrollable */}
               <div className="p-6">
-                <div className="flex items-center gap-4 text-sm text-gray-500 mb-4 pb-4 border-b flex-wrap">
+                <div className="flex items-center gap-4 text-sm text-gray-500 mb-6 pb-4 border-b flex-wrap">
                   <span>{selectedStory.author}</span>
                   <span>•</span>
                   <span>{selectedStory.date}</span>
                   <span>•</span>
                   <span>{selectedStory.readTime} read</span>
-                  <span className="ml-auto text-primary-500 font-medium">{selectedStory.source}</span>
+                  <span className="ml-auto text-primary-500 font-medium bg-primary-50 px-3 py-1 rounded-full">{selectedStory.source}</span>
                 </div>
 
-                <p className="text-gray-700 leading-relaxed text-lg">
-                  {selectedStory.summary}
-                </p>
+                <div className="prose prose-lg max-w-none text-gray-700 leading-relaxed mb-6">
+                  {selectedStory.content.split('\n\n').map((paragraph, i) => (
+                    <p key={i} className="mb-4">{paragraph}</p>
+                  ))}
+                </div>
                 
-                <p className="text-gray-600 leading-relaxed mt-4">
-                  This story has been analyzed by our AI system and verified for credibility. The trust score reflects the reliability of the source and the factual accuracy of the content based on cross-referencing with multiple verified sources.
-                </p>
-                
-                <p className="text-gray-600 leading-relaxed mt-4">
-                  Our advanced algorithms cross-reference information from multiple trusted sources to ensure accuracy. The sentiment analysis provides insight into the overall tone of the article, helping you understand the perspective being presented.
+                <p className="text-gray-500 text-sm leading-relaxed mt-4 p-4 bg-gray-50 rounded-xl">
+                  This story was fetched live and evaluated dynamically. Trust scores and sentiment are generated by rapid AI analysis of the content.
                 </p>
 
-                <div className="mt-6 pt-4 border-t flex gap-3">
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="flex-1 py-3 bg-gradient-to-r from-primary-500 to-secondary-500 text-white rounded-xl font-semibold"
+                <div className="mt-6 pt-4 border-t flex gap-3 flex-wrap">
+                  {selectedStory.url && (
+                     <a
+                       href={selectedStory.url}
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       className="flex-1 py-3 bg-gradient-to-r from-primary-500 to-secondary-500 text-white rounded-xl font-semibold text-center hover:opacity-90 transition-opacity"
+                     >
+                       {t.readFullArticle || 'Read Full Article'}
+                     </a>
+                  )}
+                  <button
+                    onClick={() => handleShare(selectedStory)}
+                    className="flex items-center gap-2 px-6 py-3 border-2 border-gray-200 rounded-xl font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
                   >
-                    {t.readFullArticle}
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="px-6 py-3 border-2 border-gray-200 rounded-xl font-semibold text-gray-600 hover:bg-gray-50"
+                    <Share2 className="w-5 h-5" /> {t.share || 'Share'}
+                  </button>
+                  <button
+                    onClick={() => handleToggleSave(selectedStory)}
+                    className={`flex items-center gap-2 px-6 py-3 border-2 rounded-xl font-semibold transition-colors ${
+                      isSaved(selectedStory.id) 
+                      ? 'border-red-500 text-red-500 hover:bg-red-50' 
+                      : 'border-primary-500 text-primary-500 hover:bg-primary-50'
+                    }`}
                   >
-                    {t.share}
-                  </motion.button>
+                    {isSaved(selectedStory.id) ? (
+                      <><Trash2 className="w-5 h-5" /> Remove</>
+                    ) : (
+                      <><Bookmark className="w-5 h-5" /> Save</>
+                    )}
+                  </button>
                 </div>
               </div>
             </motion.div>

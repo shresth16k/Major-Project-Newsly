@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, FileText, Users, BarChart3, Settings, LogOut, Menu, X } from 'lucide-react'
+import { LayoutDashboard, FileText, Users, BarChart3, Settings, LogOut, Menu, X, Mail } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { useState } from 'react'
 
@@ -8,6 +8,7 @@ const navItems = [
   { icon: FileText, label: 'Articles', path: '/admin/articles' },
   { icon: Users, label: 'Users', path: '/admin/users' },
   { icon: BarChart3, label: 'Analytics', path: '/admin/analytics' },
+  { icon: Mail, label: 'Messages', path: '/admin/contacts' },
   { icon: Settings, label: 'Settings', path: '/admin/settings' },
 ]
 

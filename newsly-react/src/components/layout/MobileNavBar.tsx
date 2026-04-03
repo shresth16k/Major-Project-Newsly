@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Home, FileText, Shield, Heart, MoreHorizontal } from 'lucide-react'
+import { Home, FileText, Shield, Bookmark, MoreHorizontal } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useTranslation, useSettingsStore } from '../../store/settingsStore'
 
@@ -12,7 +12,7 @@ const MobileNavBar = () => {
     { icon: Home, label: t.home, path: '/' },
     { icon: FileText, label: t.summarize, path: '/summarize' },
     { icon: Shield, label: t.verify, path: '/verify' },
-    { icon: Heart, label: t.sentiment, path: '/sentiment' },
+    { icon: Bookmark, label: t.savedPosts || 'Saved', path: '/saved' },
     { icon: MoreHorizontal, label: t.more, path: '/more' },
   ]
 
