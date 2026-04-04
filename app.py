@@ -22,13 +22,6 @@ try:
         USE_TRANSFORMER = True
 except Exception:
     USE_TRANSFORMER = False
-try:
-    from sumy.parsers.plaintext import PlaintextParser
-    from sumy.nlp.tokenizers import Tokenizer
-    from sumy.summarizers.lex_rank import LexRankSummarizer
-    SUMY_AVAILABLE = True
-except Exception:
-    SUMY_AVAILABLE = False
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -149,36 +142,6 @@ def extract_text_from_pdf_file(stream):
         logger.exception("PDF extract failed: %s", e)
         return ''
 
-def _extractive_summarize_offline(text, max_sentences=3):
-    import re, math
-    from collections import Counter
-    if not text or not isinstance(text, str):
-        return ""
-    sentences = re.split(r'(?<=[.!?])\\s+', text.strip())
-    sentences = [s.strip() for s in sentences if s.strip()]
-    if len(sentences) <= max_sentences:
-        return " ".join(sentences)
-    def tokenize(t): return re.findall(r"\\w+", t.lower())
-    stopwords = set("a about above after again against all am an and any are as at be because been before being below between both but by could did do does doing down during each few for from further had has have having he her here hers herself him himself his how i if in into is it its itself me more most my myself nor of on once only or other our ours ourselves out over own same she should so some such than that their them then there these they this those through to too under until up very was we were what when where which while who whom why with would you your".split())
-    freq = Counter()
-    for s in sentences:
-        for w in tokenize(s):
-            if w in stopwords: continue
-            freq[w] += 1
-    if not freq:
-        return " ".join(sentences[:max_sentences])
-    maxf = max(freq.values())
-    for k in list(freq.keys()):
-        freq[k] = freq[k] / maxf
-    scored = []
-    for i,s in enumerate(sentences):
-        score = sum(freq.get(w,0) for w in tokenize(s))
-        score = score / (1 + math.log(len(tokenize(s))+1))
-        scored.append((i, score, s))
-    scored.sort(key=lambda x: x[1], reverse=True)
-    top = sorted(scored[:max_sentences], key=lambda x: x[0])
-    return " ".join([t[2] for t in top])
-
 def summarize_with_transformer(text, length_choice='medium'):
     try:
         from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
@@ -228,21 +191,53 @@ def summarize_with_transformer(text, length_choice='medium'):
         return None
 
 
+def summarize_with_cloud_ai(text, length_choice='medium'):
+    try:
+        import requests
+        
+        if length_choice == 'short':
+             prompt = "Provide a very short, concise summary (2-3 sentences max) of the following text. Do not include any conversational intro, just the summary.\\n\\n" + text
+        elif length_choice == 'medium':
+             prompt = "Provide a medium-length, detailed summary (about one paragraph) of the following text. Do not include any conversational intro.\\n\\n" + text
+        else:
+             prompt = "Provide a comprehensive, highly detailed summary of the following text. Do not include any conversational intro.\\n\\n" + text
+             
+        # Use Pollinations AI free text endpoint (no API key, robust free public aggregator)
+        payload = {
+            "messages": [
+                {"role": "system", "content": "You are a professional text summarizer. You MUST respond ONLY with the summarized text itself. Do NOT output any conversational filler like 'Here is the summary' or 'Sure, here you go'."},
+                {"role": "user", "content": prompt[:15000]} # Truncate gracefully to prevent overload
+            ],
+            "model": "openai" # Default to high-quality summarization engine
+        }
+        
+        # 15 second timeout to keep Vercel from crashing on its own 10-15s hard timeout
+        response = requests.post("https://text.pollinations.ai/", json=payload, timeout=12)
+        
+        if response.status_code == 200:
+            summary = response.text.replace("Here is a summary", "").strip()
+            # Simple check to ensure we got real text
+            if len(summary) > 10:
+                return summary
+                
+        return None
+    except Exception as e:
+        logger.exception("Cloud AI summarization exception: %s", e)
+        return None
+
 def summarize_text_auto(text, length='medium'):
-    s = summarize_with_transformer(text, length_choice=length)
+    # 1. Try Local Transformer (Works perfectly on local machines)
+    if USE_TRANSFORMER:
+        s = summarize_with_transformer(text, length_choice=length)
+        if s:
+            return s, 'transformer'
+            
+    # 2. Try Free Cloud AI (Works seamlessly on Vercel without heavy libraries)
+    s = summarize_with_cloud_ai(text, length_choice=length)
     if s:
         return s, 'transformer'
-    if SUMY_AVAILABLE:
-        try:
-            parser = PlaintextParser.from_string(text, Tokenizer('english'))
-            summarizer = LexRankSummarizer()
-            sentences_count = 3 if length=='short' else 5 if length=='medium' else 10
-            summ_sentences = summarizer(parser.document, sentences_count)
-            return ' '.join(str(s) for s in summ_sentences), 'extractive'
-        except Exception as e:
-            logger.exception("Sumy failed: %s", e)
-    sentences_count = 3 if length=='short' else 5 if length=='medium' else 10
-    return _extractive_summarize_offline(text, max_sentences=sentences_count), 'extractive'
+    # 3. Final Fallback if Cloud AI also fails
+    return "Could not generate a summary at this time. Please try again.", "error"
 
 
 

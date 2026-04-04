@@ -5,7 +5,6 @@ Werkzeug
 requests
 beautifulsoup4
 PyPDF2
-sumy
 duckduckgo-search
 vaderSentiment
 NRCLex
