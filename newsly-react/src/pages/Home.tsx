@@ -534,7 +534,7 @@ const TrendingPicks = () => {
     const fetchLatestNews = async () => {
       try {
         setLoading(true)
-        const res = await fetch('http://localhost:5000/api/news/latest')
+        const res = await fetch('/api/news/latest')
         if (res.ok) {
           const data = await res.json()
           setTrendingStories(data.news || [])

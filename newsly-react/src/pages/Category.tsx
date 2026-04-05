@@ -65,7 +65,7 @@ const Category = () => {
       if (!category) return
       try {
         setLoading(true)
-        const res = await fetch(`http://localhost:5000/api/news/latest?category=${encodeURIComponent(category)}`)
+        const res = await fetch(`/api/news/latest?category=${encodeURIComponent(category)}`)
         if (res.ok) {
           const result = await res.json()
           setNews(result.news || [])
